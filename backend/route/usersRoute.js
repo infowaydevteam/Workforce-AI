@@ -1,5 +1,5 @@
 const express = require("express");
-const { getUsers, deleteUser, updateStatus, getEmployeeById, getLoginHistory, getAppUsage, getActivitySummary, getActivityLogs, getReportsSummary, getAttendanceReport, getProductivityRanking, getReportsAppUsage, getUserFullReport } = require("../controller/userController");
+const { getUsers, deleteUser, updateStatus, getEmployeeById, getLoginHistory, getAppUsage, getActivitySummary, getActivityLogs, getUserFullReport } = require("../controller/userController");
 const { authorizeRole, verifyToken } = require("../middleware/authMiddleware");
 const router = express.Router();
 

@@ -2,7 +2,7 @@ import React from 'react'
 import { useState } from "react";
 import { User, Lock, BarChart3 } from "lucide-react";
 import { API_BASE_URL } from '../../../config';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const Login = () => {
   const [error, setError] = useState("");
@@ -46,12 +46,12 @@ const Login = () => {
 
       // Redirect after 1 second
       setTimeout(() => {
-        setTimeout(() => {
-          if (data.user.role === "admin") {
-            navigate("/admin");
-          }
-        }, 1000);
-
+        const role = data.user.role;
+        if (role === "admin") navigate("/admin");
+        else if (role === "manager") navigate("/manager");
+        else if (role === "hr") navigate("/hr");
+        else if (role === "executive") navigate("/executive");
+        else navigate("/");
       }, 1000);
 
     } catch (err) {
@@ -197,13 +197,10 @@ const Login = () => {
             </form>
 
             <div className="mt-6 text-center text-sm">
-              <span className="text-gray-500">
-                Need help?
-              </span>
-
-              <button className="ml-1 text-indigo-600 font-medium hover:underline">
-                Contact Support
-              </button>
+              <span className="text-gray-500">New company? </span>
+              <Link to="/signup" className="text-indigo-600 font-medium hover:underline">
+                Create a workspace
+              </Link>
             </div>
           </div>
         </div>

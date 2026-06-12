@@ -11,6 +11,11 @@ const sessiondRoutes = require("./route/sessionRoutes");
 const activityRoutes = require("./route/activityRoutes");
 const idleRoutes = require("./route/idleRoutes");
 const agentRoutes = require("./route/agentRoutes");
+const tenantRoute = require("./route/tenantRoute");
+const departmentRoute = require("./route/departmentRoute");
+const invitationRoute = require("./route/invitationRoute");
+const classificationRoute = require("./route/classificationRoute");
+const productivityRoute = require("./route/productivityRoute");
 
 const app = express();
 
@@ -26,6 +31,11 @@ app.use("/api/session", sessiondRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/idle", idleRoutes);
 app.use("/api/agent", agentRoutes);
+app.use("/api/tenant", tenantRoute);
+app.use("/api/departments", departmentRoute);
+app.use("/api/invitations", invitationRoute);
+app.use("/api/classifications", classificationRoute);
+app.use("/api/productivity", productivityRoute);
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);
