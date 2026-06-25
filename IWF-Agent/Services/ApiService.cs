@@ -64,41 +64,6 @@ public class ApiService
     }
 }
 
-// public static async Task<int> VerifyAgent()
-// {
-//     var token = ConfigService.GetToken();
-
-//     var data = new
-//     {
-//         agent_token = token
-//     };
-
-//     var json = JsonSerializer.Serialize(data);
-
-//     var content =
-//         new StringContent(
-//             json,
-//             Encoding.UTF8,
-//             "application/json"
-//         );
-
-//     var response =
-//         await client.PostAsync(
-//             $"{ConfigService.GetApiBaseUrl()}/api/agent/verify",
-//             content
-//         );
-
-//     var result =
-//         await response.Content.ReadAsStringAsync();
-
-//     using JsonDocument doc =
-//         JsonDocument.Parse(result);
-
-//     return doc.RootElement
-//               .GetProperty("user_id")
-//               .GetInt32();
-// }
-
 public static async Task<VerifyResponse> VerifyAgent(string token)
 {
     var data = new
