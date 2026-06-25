@@ -2,7 +2,8 @@ const pool = require("../db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-
+const { sendAgentEmail } = require("../middleware/emailService");
+const { API_BASE_URL } = require("../../frontend/config");
 const register = async (req, res) => {
   try {
     const {
@@ -16,7 +17,7 @@ const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 🔥 Agent Token generate
+    // Agent Token Generate
     const agentToken = crypto.randomUUID();
 
     const newUser = await pool.query(
@@ -42,6 +43,19 @@ const register = async (req, res) => {
         agentToken,
       ]
     );
+
+    // Download Link
+    const downloadLink =
+      `${API_BASE_URL}/api/agent/download-agent/${agentToken}`;
+
+    // Email Send
+    await sendAgentEmail({
+      email,
+      name,
+      activationCode: agentToken,
+      downloadLink,
+    });
+
     res.status(201).json({
       message: "User created successfully",
       user: newUser.rows[0],
@@ -49,6 +63,7 @@ const register = async (req, res) => {
 
   } catch (error) {
     console.error(error);
+
     res.status(500).json({
       message: "Server error",
     });

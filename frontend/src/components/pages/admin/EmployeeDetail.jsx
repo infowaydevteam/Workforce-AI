@@ -45,6 +45,12 @@ const formatTime = (date) =>
 
 const getTodayDate = () => new Date().toISOString().split("T")[0];
 
+const shortenAppName = (name = "") => {
+  if (name.length <= 10) return name;
+
+  return `${name.slice(0, 10)}...`;
+};
+
 const EmployeeDetail = () => {
   const { id } = useParams();
 
@@ -247,7 +253,7 @@ const EmployeeDetail = () => {
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={appChart}>
                 <CartesianGrid />
-                <XAxis dataKey="name" />
+                <XAxis dataKey="name" tickFormatter={(value) => shortenAppName(value)}/>
                 <YAxis />
                 <Tooltip formatter={(v) => formatDuration(v)} />
                 <Bar dataKey="usage" fill="#6366f1" />

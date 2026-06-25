@@ -298,8 +298,11 @@ const Users = () => {
 
                       <td className="p-4 text-center">
                         <button
-                          onClick={() => handleDelete(user.id)}
-                          className=" p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(user.id);
+                          }}
+                          className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all"
                         >
                           <Trash2 size={16} />
                         </button>

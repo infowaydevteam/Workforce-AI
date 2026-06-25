@@ -5,9 +5,9 @@ const verifyAgent = async (req, res) => {
     const { agent_token } = req.body;
 
     const user = await pool.query(
-      `SELECT id, name, email
-       FROM users
-       WHERE agent_token = $1`,
+      `SELECT id, name, email, agent_token
+   FROM users
+   WHERE agent_token = $1`,
       [agent_token]
     );
 
@@ -23,6 +23,7 @@ const verifyAgent = async (req, res) => {
       user_id: user.rows[0].id,
       name: user.rows[0].name,
       email: user.rows[0].email,
+      agent_token: user.rows[0].agent_token,
     });
   } catch (err) {
     console.error(err);

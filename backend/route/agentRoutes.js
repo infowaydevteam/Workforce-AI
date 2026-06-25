@@ -9,19 +9,14 @@ router.post("/verify", verifyAgent);
 
 // router.get("/download-agent/:token", async (req, res) => {
 //   try {
-//     const { token } = req.params;
+//     console.log("STEP 1");
 
+//     const { token } = req.params;
 //     console.log("TOKEN:", token);
 
-//     // config.json ka path
-//     const configPath = path.resolve(
-//       __dirname,
-//       "..",
-//       "files",
-//       "config.json"
-//     );
+//     const configPath = path.resolve(__dirname, "..", "files",  "IWF-Agent", "config.json");
+//     console.log("CONFIG PATH:", configPath);
 
-//     // token inject karo
 //     fs.writeFileSync(
 //       configPath,
 //       JSON.stringify(
@@ -34,26 +29,21 @@ router.post("/verify", verifyAgent);
 //       )
 //     );
 
-//     console.log(
-//       "UPDATED CONFIG:",
-//       fs.readFileSync(configPath, "utf8")
-//     );
+//     console.log("STEP 2 CONFIG UPDATED");
 
-//     const filePath = path.resolve(
-//       __dirname,
-//       "..",
-//       "files",
-//       "IWF-Agent.exe"
-//     );
+//     const zipPath = path.resolve(__dirname, "..", "files", "IWF-Agent.zip");
+//     console.log("ZIP PATH:", zipPath);
 
-//     return res.download(filePath, "IWF-Agent.exe");
+//     console.log("ZIP EXISTS:", fs.existsSync(zipPath));
+
+//     return res.download(zipPath, "IWF-Agent.zip");
 
 //   } catch (err) {
-//     console.error("Download Error:", err);
+//     console.error("DOWNLOAD ERROR:", err);
 
 //     return res.status(500).json({
 //       success: false,
-//       message: "Failed to download agent"
+//       message: err.message
 //     });
 //   }
 // });
@@ -62,32 +52,42 @@ router.get("/download-agent/:token", async (req, res) => {
   try {
     const { token } = req.params;
 
-    // config update
-    const configPath = path.resolve(__dirname, "..", "files", "config.json");
+    console.log("Agent Download Request:", token);
 
-    fs.writeFileSync(
-      configPath,
-      JSON.stringify(
-        {
-          agent_token: token,
-          api_base_url: "http://localhost:5000"
-        },
-        null,
-        2
-      )
+    // Optional: Token verify
+    // const user = await pool.query(
+    //   "SELECT id FROM users WHERE agent_token = $1",
+    //   [token]
+    // );
+
+    // if (user.rows.length === 0) {
+    //   return res.status(404).json({
+    //     success: false,
+    //     message: "Invalid activation token",
+    //   });
+    // }
+
+    const zipPath = path.resolve(
+      __dirname,
+      "..",
+      "files",
+      "IWF-Agent.zip"
     );
 
-    // ZIP bhejo
-    const zipPath = path.resolve(__dirname, "..", "files", "IWF-Agent.zip");
+    if (!fs.existsSync(zipPath)) {
+      return res.status(404).json({
+        success: false,
+        message: "Agent package not found",
+      });
+    }
 
     return res.download(zipPath, "IWF-Agent.zip");
-
   } catch (err) {
-    console.error(err);
+    console.error("DOWNLOAD ERROR:", err);
 
     return res.status(500).json({
       success: false,
-      message: "Failed to download agent"
+      message: "Failed to download agent",
     });
   }
 });
