@@ -9,55 +9,86 @@ class Program
         {
             Console.WriteLine("IWF Agent Started...");
 
-VerifyResponse result;
+            VerifyResponse result;
 
-if (!ConfigService.IsActivated())
-{
-    Console.Write("Enter Activation Code: ");
-    string code = Console.ReadLine();
+            if (!ConfigService.IsActivated())
+            {
+                Console.Write("Enter Activation Code: ");
+                string code = Console.ReadLine();
 
-    result = await ApiService.VerifyAgent(code);
+                result = await ApiService.VerifyAgent(code);
 
-    if (result == null || !result.success)
-    {
-        Console.WriteLine("❌ Invalid Activation Code");
-        Console.ReadLine();
-        return;
-    }
+                if (result == null || !result.success)
+                {
+                    Console.WriteLine("❌ Invalid Activation Code");
+                    Console.ReadLine();
+                    return;
+                }
 
-    ConfigService.SaveConfig(
-        result.agent_token,
-        ConfigService.GetApiBaseUrl()
-    );
+                ConfigService.SaveConfig(
+                    result.agent_token,
+                    ConfigService.GetApiBaseUrl()
+                );
 
-    Console.WriteLine("✔ Activation Successful");
-}
-else
-{
-    Console.WriteLine("Agent Already Activated");
+                Console.WriteLine("✔ Activation Successful");
 
-    var token = ConfigService.GetToken();
+                // StartupService.Register();
+            }
+            else
+            {
+                Console.WriteLine("Agent Already Activated");
 
-    result = await ApiService.VerifyAgent(token);
+                var token = ConfigService.GetToken();
 
-    if (result == null || !result.success)
-    {
-        Console.WriteLine("❌ Saved token invalid");
-        Console.ReadLine();
-        return;
-    }
-}
+                result = await ApiService.VerifyAgent(token);
 
-UserContext.UserId = result.user_id;
+                if (result == null || !result.success)
+                {
+                    Console.WriteLine("❌ Saved token invalid");
+                    Console.ReadLine();
+                    return;
+                }
+            }
 
-Console.WriteLine($"Logged User ID: {UserContext.UserId}");
+            UserContext.UserId = result.user_id;
 
-await ApiService.StartSession();
+            Console.WriteLine($"Logged User ID: {UserContext.UserId}");
 
-ActivityService.Start();
+            // StartupService.Register();
 
-Console.WriteLine("Press ENTER to stop agent...");
-Console.ReadLine();
+            await ApiService.StartSession();
+
+            // ================================
+            // LOAD RESTRICTED ITEMS FROM API
+            // ================================
+
+            var restrictedItems =
+                await ApiService.GetRestrictedItems();
+
+            if (restrictedItems != null &&
+                restrictedItems.Success)
+            {
+                RestrictedAppService.Load(
+                    restrictedItems.Apps
+                );
+
+                RestrictedSiteService.Load(
+                    restrictedItems.Sites
+                );
+            }
+            else
+            {
+                Console.WriteLine(
+                    "Failed to load restricted items."
+                );
+            }
+
+            // ================================
+
+            ActivityService.Start();
+
+            Console.WriteLine("Press ENTER to stop agent...");
+            Console.ReadLine();
         }
         catch (Exception ex)
         {

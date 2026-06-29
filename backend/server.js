@@ -11,6 +11,8 @@ const sessiondRoutes = require("./route/sessionRoutes");
 const activityRoutes = require("./route/activityRoutes");
 const idleRoutes = require("./route/idleRoutes");
 const agentRoutes = require("./route/agentRoutes");
+const alertRoutes = require("./route/alertRoute");
+const restrictedRoute = require("./route/restrictedRoute");
 
 const app = express();
 
@@ -26,6 +28,9 @@ app.use("/api/session", sessiondRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/idle", idleRoutes);
 app.use("/api/agent", agentRoutes);
+app.use("/api/alerts", alertRoutes);
+app.use("/api/restricted-items", restrictedRoute);
+
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);

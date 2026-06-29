@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("IWF-Agent")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+858286eb3db558dc63fa48e0743f101e3cfb9835")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+22b22ba41eea9c617daed3ef8e98fe661ab5c312")]
 [assembly: System.Reflection.AssemblyProductAttribute("IWF-Agent")]
 [assembly: System.Reflection.AssemblyTitleAttribute("IWF-Agent")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

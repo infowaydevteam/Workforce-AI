@@ -13,6 +13,16 @@ public class ActivityService
 
     static DateTime idleStartTime;
 
+    // Restricted Website Timer
+
+static bool restrictedRunning = false;
+
+static string restrictedSite = "";
+
+static DateTime restrictedStartTime;
+
+static bool emailSent = false;
+
     public static void Start()
     {
         Console.WriteLine("Activity Service Started");
@@ -51,6 +61,9 @@ public class ActivityService
         {
             string currentWindow =
                 WindowService.GetActiveWindow();
+
+                string title =
+    WindowService.GetActiveWindowTitle();
 
             int idleSeconds = IdleHelper.GetIdleTime();
 
@@ -139,6 +152,80 @@ bool idle = idleSeconds >= 5;
 
                 return;
             }
+
+// =====================
+// APP / WEBSITE RESTRICTED
+// =====================
+
+string matchedApp =
+    RestrictedAppService.GetMatchedApp(currentWindow);
+
+string matchedSite =
+    RestrictedSiteService.GetMatchedSite(title);
+
+string restrictedName = "";
+
+if (!string.IsNullOrEmpty(matchedApp))
+{
+    restrictedName = matchedApp;
+    Console.WriteLine($"Restricted App: {restrictedName}");
+}
+else if (!string.IsNullOrEmpty(matchedSite))
+{
+    restrictedName = matchedSite;
+    Console.WriteLine($"Restricted Website: {restrictedName}");
+}
+
+if (!string.IsNullOrEmpty(restrictedName))
+{
+    if (!restrictedRunning)
+    {
+        restrictedRunning = true;
+        restrictedSite = restrictedName;
+        restrictedStartTime = DateTime.Now;
+        emailSent = false;
+
+        Console.WriteLine($"Started Timer for {restrictedName}");
+    }
+    else if (restrictedSite == restrictedName)
+    {
+        double minutes =
+            (DateTime.Now - restrictedStartTime).TotalMinutes;
+
+        Console.WriteLine(
+            $"{restrictedName} Running: {minutes:F1} min"
+        );
+
+        if (minutes >= 0.2 && !emailSent)
+        {
+            emailSent = true;
+
+            Console.WriteLine(
+                $"Sending Restricted Alert: {restrictedName}"
+            );
+
+            await ApiService.SendRestrictedAlert(
+                UserContext.UserId,
+                restrictedName,
+                minutes
+            );
+        }
+    }
+}
+else
+{
+    if (restrictedRunning)
+    {
+        Console.WriteLine(
+            $"Stopped Timer for {restrictedSite}"
+        );
+    }
+
+    restrictedRunning = false;
+    restrictedSite = "";
+    emailSent = false;
+}
+
 
             // =====================
             // CONTINUOUS ACTIVE

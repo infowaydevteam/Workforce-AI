@@ -81,6 +81,105 @@ const sendAgentEmail = async ({
   }
 };
 
+const sendRestrictedWebsiteAlert = async ({
+  managerEmail,
+  managerName,
+  employeeName,
+  website,
+  duration,
+}) => {
+  try {
+    await transporter.sendMail({
+      from: `"IWF Team" <${process.env.EMAIL_USER}>`,
+      to: managerEmail,
+      subject: "🚨 IWF Alert - Restricted Website Usage",
+
+      html: `
+      <div style="font-family:Arial;padding:20px;line-height:1.6;">
+
+        <h2 style="color:#dc2626;">
+          Restricted Website Alert
+        </h2>
+
+        <p>Hello <b>${managerName}</b>,</p>
+
+        <p>
+          An employee from your team has been using a restricted website.
+        </p>
+
+        <table
+          style="
+            border-collapse:collapse;
+            margin-top:15px;
+          "
+        >
+
+          <tr>
+            <td style="padding:8px;font-weight:bold;">
+              Employee
+            </td>
+
+            <td style="padding:8px;">
+              ${employeeName}
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:8px;font-weight:bold;">
+              Website
+            </td>
+
+            <td style="padding:8px;">
+              ${website}
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:8px;font-weight:bold;">
+              Duration
+            </td>
+
+            <td style="padding:8px;">
+              ${duration} Minutes
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:8px;font-weight:bold;">
+              Time
+            </td>
+
+            <td style="padding:8px;">
+              ${new Date().toLocaleString()}
+            </td>
+          </tr>
+
+        </table>
+
+        <br>
+
+        <p>
+          Please review the employee activity.
+        </p>
+
+        <br>
+
+        <p>
+          Regards,<br>
+          IWF Team
+        </p>
+
+      </div>
+      `,
+    });
+
+    console.log("Restricted Website Alert Sent");
+  } catch (err) {
+    console.error(err.message);
+  }
+};
+
 module.exports = {
   sendAgentEmail,
+  sendRestrictedWebsiteAlert
 };

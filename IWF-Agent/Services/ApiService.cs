@@ -179,4 +179,90 @@ public static async Task UpdateStatus(string status)
         );
     }
 }
+
+public static async Task SendRestrictedAlert(
+    int userId,
+    string website,
+    double duration
+)
+{
+    try
+    {
+        var data = new
+        {
+            userId = userId,
+            website = website,
+            duration = Math.Max(1, (int)Math.Ceiling(duration))
+        };
+
+        var json =
+            JsonSerializer.Serialize(data);
+
+        var content =
+            new StringContent(
+                json,
+                Encoding.UTF8,
+                "application/json"
+            );
+
+        var response =
+            await client.PostAsync(
+                $"{ConfigService.GetApiBaseUrl()}/api/alerts/send",
+                content
+            );
+
+        var result =
+            await response.Content.ReadAsStringAsync();
+
+        Console.WriteLine(
+            $"Restricted Alert Response: {result}"
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine(
+            $"Restricted Alert Error: {ex.Message}"
+        );
+    }
+}
+
+public static async Task<RestrictedItemsResponse?> GetRestrictedItems()
+{
+    try
+    {
+        var response =
+            await client.GetAsync(
+                $"{ConfigService.GetApiBaseUrl()}/api/restricted-items"
+            );
+
+        if (!response.IsSuccessStatusCode)
+        {
+            Console.WriteLine(
+                "Failed to fetch restricted items."
+            );
+
+            return null;
+        }
+
+        var json =
+            await response.Content.ReadAsStringAsync();
+
+        Console.WriteLine(
+            $"Restricted Items Response: {json}"
+        );
+
+        return JsonSerializer.Deserialize<RestrictedItemsResponse>(
+            json
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine(
+            $"Restricted Items Error: {ex.Message}"
+        );
+
+        return null;
+    }
+}
+
 }
