@@ -3,7 +3,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { sendAgentEmail } = require("../middleware/emailService");
-const { API_BASE_URL } = require("../../frontend/config");
+require("dotenv").config();
 const register = async (req, res) => {
   try {
     const {
@@ -46,7 +46,7 @@ const register = async (req, res) => {
 
     // Download Link
     const downloadLink =
-      `${API_BASE_URL}/api/agent/download-agent/${agentToken}`;
+      `${process.env.API_BASE_URL}/api/agent/download-agent/${agentToken}`;
 
     // Email Send
     await sendAgentEmail({
