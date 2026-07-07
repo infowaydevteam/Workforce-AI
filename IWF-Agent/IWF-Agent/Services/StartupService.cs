@@ -1,24 +1,111 @@
-using Microsoft.Win32;
+using System;
 using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
 
 public static class StartupService
 {
     public static void Register()
     {
-        string exePath =
-            Process.GetCurrentProcess()
-            .MainModule
-            .FileName;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            RegisterMac();
+        }
+        else
+        {
+            RegisterWindows();
+        }
+    }
 
-        RegistryKey key =
-            Registry.CurrentUser.OpenSubKey(
-                @"Software\Microsoft\Windows\CurrentVersion\Run",
-                true
+    // ── Windows: write to HKCU Run registry key ───────────────────────────
+    private static void RegisterWindows()
+    {
+        // Keep Microsoft.Win32 usage inside a runtime-guarded method so the
+        // compiler warning CA1416 is scoped and the macOS build stays clean.
+        try
+        {
+            string exePath = Process.GetCurrentProcess().MainModule!.FileName;
+
+            // Reflection-guarded so this compiles on non-Windows SDKs.
+            var registryType = Type.GetType("Microsoft.Win32.Registry, Microsoft.Win32.Registry");
+            if (registryType == null)
+            {
+                Console.WriteLine("Registry not available on this platform.");
+                return;
+            }
+
+            dynamic currentUser = registryType.GetProperty("CurrentUser")!.GetValue(null)!;
+            dynamic key = currentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
+            key.SetValue("IWFAgent", exePath);
+
+            Console.WriteLine("Startup Registered (Windows Registry)");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Windows startup registration failed: {ex.Message}");
+        }
+    }
+
+    // ── macOS: write a LaunchAgent plist to ~/Library/LaunchAgents ────────
+    private static void RegisterMac()
+    {
+        try
+        {
+            string exePath = Process.GetCurrentProcess().MainModule!.FileName;
+            string exeDir  = Path.GetDirectoryName(exePath)!;
+
+            string launchAgentsDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Library", "LaunchAgents"
             );
 
-        key.SetValue("IWFAgent", exePath);
+            Directory.CreateDirectory(launchAgentsDir);
 
-        Console.WriteLine("Startup Registered Successfully");
-        Console.WriteLine(exePath);
+            string plistPath = Path.Combine(launchAgentsDir, "com.iwf.agent.plist");
+
+            string plist = $"""
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.iwf.agent</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{exePath}</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>{exeDir}</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>{exeDir}/iwf-agent.log</string>
+    <key>StandardErrorPath</key>
+    <string>{exeDir}/iwf-agent-error.log</string>
+</dict>
+</plist>
+""";
+
+            File.WriteAllText(plistPath, plist);
+
+            // Load it immediately so it is active without a reboot
+            var psi = new ProcessStartInfo("launchctl", $"load {plistPath}")
+            {
+                UseShellExecute = false,
+                CreateNoWindow  = true
+            };
+
+            using var p = Process.Start(psi);
+            p?.WaitForExit();
+
+            Console.WriteLine($"Startup Registered (macOS LaunchAgent): {plistPath}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"macOS startup registration failed: {ex.Message}");
+        }
     }
 }
