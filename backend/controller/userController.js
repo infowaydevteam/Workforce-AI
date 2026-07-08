@@ -1,4 +1,5 @@
 const pool = require("../db");
+const { calculateProductivityScore } = require("../services/level1Service");
 
 // Get All Users
 const getUsers = async (req, res) => {
@@ -10,13 +11,26 @@ const getUsers = async (req, res) => {
   users.email,
   users.role,
   users.status,
+  users.organization_id,
+  users.department_id,
+  users.team_id,
+  users.manager_id,
+  users.invitation_status,
+  users.agent_token,
+  users.agent_installed_at,
   organizations.name AS organization_name,
-  teams.name AS team_name
+  departments.name AS department_name,
+  teams.name AS team_name,
+  managers.name AS manager_name
 FROM users
 LEFT JOIN organizations
   ON users.organization_id = organizations.id
+LEFT JOIN departments
+  ON users.department_id = departments.id
 LEFT JOIN teams
   ON users.team_id = teams.id
+LEFT JOIN users managers
+  ON users.manager_id = managers.id
 WHERE users.role != 'admin'
 ORDER BY users.id DESC
     `);
@@ -93,12 +107,18 @@ const getEmployeeById = async (req, res) => {
         u.email,
         u.role,
         u.status,
+        u.invitation_status,
+        u.agent_installed_at,
         u.last_active,
         o.name AS organization_name,
-        t.name AS team_name
+        d.name AS department_name,
+        t.name AS team_name,
+        m.name AS manager_name
       FROM users u
       LEFT JOIN organizations o ON u.organization_id = o.id
+      LEFT JOIN departments d ON u.department_id = d.id
       LEFT JOIN teams t ON u.team_id = t.id
+      LEFT JOIN users m ON u.manager_id = m.id
       WHERE u.id = $1
       `,
       [id]
@@ -150,7 +170,11 @@ const getAppUsage = async (req, res) => {
     const { date } = req.query;
 
     let query = `
-      SELECT app_name, SUM(duration) AS total_duration
+      SELECT
+        app_name,
+        activity_category,
+        SUM(duration) AS total_duration,
+        ROUND(AVG(COALESCE(productivity_score, 50)))::int AS average_productivity
       FROM activity_logs
       WHERE user_id = $1
     `;
@@ -162,7 +186,7 @@ const getAppUsage = async (req, res) => {
       params.push(date);
     }
 
-    query += ` GROUP BY app_name`;
+    query += ` GROUP BY app_name, activity_category`;
 
     const result = await pool.query(query, params);
 
@@ -203,16 +227,26 @@ const getActivitySummary = async (req, res) => {
     `, params);
 
     const active = await pool.query(`
-      SELECT SUM(duration) AS active_time
+      SELECT
+        COALESCE(SUM(duration),0) AS active_time,
+        COALESCE(SUM(duration * (COALESCE(productivity_score, 50) / 100.0)),0) AS weighted_productive_time
       FROM activity_logs
       ${idleFilter}
     `, params);
+
+    const productivityScore = calculateProductivityScore({
+      weightedSeconds: active.rows[0].weighted_productive_time,
+      measuredSeconds:
+        Number(active.rows[0].active_time || 0) +
+        Number(idle.rows[0].idle_time || 0),
+    });
 
     res.json({
       total_sessions: session.rows[0].total_sessions || 0,
       total_working_time: session.rows[0].total_working_time || 0,
       active_time: active.rows[0].active_time || 0,
       idle_time: idle.rows[0].idle_time || 0,
+      productivity_score: productivityScore,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -227,6 +261,8 @@ const getActivityLogs = async (req, res) => {
     let query = `
       SELECT
         app_name,
+        activity_category,
+        ROUND(AVG(COALESCE(productivity_score, 50)))::int AS average_productivity,
         MIN(start_time) AS start_time,
         MAX(end_time) AS end_time,
         SUM(duration) AS duration
@@ -242,7 +278,7 @@ const getActivityLogs = async (req, res) => {
     }
 
     query += `
-      GROUP BY app_name
+      GROUP BY app_name, activity_category
       ORDER BY SUM(duration) DESC
     `;
 
@@ -285,9 +321,22 @@ const getUserFullReport = async (req, res) => {
     // =====================
     const user = await pool.query(
       `
-      SELECT id, name, email, role, last_active
-      FROM users
-      WHERE id = $1
+      SELECT
+        u.id,
+        u.name,
+        u.email,
+        u.role,
+        u.last_active,
+        o.name AS organization_name,
+        d.name AS department_name,
+        t.name AS team_name,
+        m.name AS manager_name
+      FROM users u
+      LEFT JOIN organizations o ON u.organization_id = o.id
+      LEFT JOIN departments d ON u.department_id = d.id
+      LEFT JOIN teams t ON u.team_id = t.id
+      LEFT JOIN users m ON u.manager_id = m.id
+      WHERE u.id = $1
       `,
       [id]
     );
@@ -312,7 +361,13 @@ const getUserFullReport = async (req, res) => {
     // =====================
     const activityLogs = await pool.query(
       `
-      SELECT app_name, start_time, end_time, duration
+      SELECT
+        app_name,
+        activity_category,
+        productivity_score,
+        start_time,
+        end_time,
+        duration
       FROM activity_logs
       WHERE user_id = $1
       ${activityFilter}
@@ -352,7 +407,9 @@ const getUserFullReport = async (req, res) => {
 
     const active = await pool.query(
       `
-      SELECT COALESCE(SUM(duration),0) AS active_time
+      SELECT
+        COALESCE(SUM(duration),0) AS active_time,
+        COALESCE(SUM(duration * (COALESCE(productivity_score, 50) / 100.0)),0) AS weighted_productive_time
       FROM activity_logs
       WHERE user_id = $1
       ${activityFilter}
@@ -375,15 +432,44 @@ const getUserFullReport = async (req, res) => {
     // =====================
     const appUsage = await pool.query(
       `
-      SELECT app_name, SUM(duration) AS total_duration
+      SELECT
+        app_name,
+        activity_category,
+        SUM(duration) AS total_duration,
+        ROUND(AVG(COALESCE(productivity_score, 50)))::int AS average_productivity
       FROM activity_logs
       WHERE user_id = $1
       ${activityFilter}
-      GROUP BY app_name
+      GROUP BY app_name, activity_category
       ORDER BY total_duration DESC
       `,
       params
     );
+
+    const reviews = await pool.query(
+      `
+      SELECT
+        r.id,
+        r.report_scope,
+        r.reviewer_role,
+        r.status,
+        r.notes,
+        r.reviewed_at,
+        reviewer.name AS reviewer_name
+      FROM report_reviews r
+      LEFT JOIN users reviewer ON reviewer.id = r.reviewer_id
+      WHERE r.subject_user_id = $1
+      ORDER BY r.reviewed_at DESC
+      `,
+      [id]
+    );
+
+    const productivityScore = calculateProductivityScore({
+      weightedSeconds: active.rows[0].weighted_productive_time,
+      measuredSeconds:
+        Number(active.rows[0].active_time || 0) +
+        Number(idle.rows[0].idle_time || 0),
+    });
 
     // =====================
     // WEEKLY SUMMARY (NEW FIX)
@@ -413,6 +499,7 @@ const getUserFullReport = async (req, res) => {
         active_time: Number(active.rows[0].active_time || 0),
         idle_time: Number(idle.rows[0].idle_time || 0),
         total_sessions: sessions.rows.length || 0,
+        productivity_score: productivityScore,
       },
 
       sessions: sessions.rows,
@@ -420,6 +507,7 @@ const getUserFullReport = async (req, res) => {
       idleLogs: idleLogs.rows,
       appUsage: appUsage.rows,
       weeklySummary: weeklySummary.rows,
+      reviews: reviews.rows,
     });
 
   } catch (err) {

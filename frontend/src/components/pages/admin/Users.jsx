@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Trash2, Users as UsersIcon } from "lucide-react";
+import { Download, Plus, Trash2, Users as UsersIcon } from "lucide-react";
 import { API_BASE_URL } from "../../../../config";
 import { useNavigate } from "react-router-dom";
 
@@ -7,6 +7,7 @@ const Users = () => {
   const [users, setUsers] = useState([]);
   const [orgs, setOrgs] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const navigate = useNavigate();
 
@@ -16,7 +17,9 @@ const Users = () => {
     password: "",
     role: "employee",
     organization_id: "",
+    department_id: "",
     team_id: "",
+    manager_id: "",
   });
 
 
@@ -88,9 +91,31 @@ const Users = () => {
     }
   };
 
+  const fetchDepartmentsByOrg = async (orgId = "") => {
+    try {
+      const token = localStorage.getItem("token");
+      const suffix = orgId ? `?organization_id=${orgId}` : "";
+
+      const res = await fetch(
+        `${API_BASE_URL}/api/level1/departments${suffix}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+      setDepartments(data);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
     fetchOrgs();
+    fetchDepartmentsByOrg();
   }, []);
 
   const handleDelete = async (id) => {
@@ -134,10 +159,13 @@ const Users = () => {
     setFormData((prev) => ({
       ...prev,
       organization_id: orgId,
+      department_id: "",
       team_id: "",
+      manager_id: "",
     }));
 
     fetchTeamsByOrg(orgId);
+    fetchDepartmentsByOrg(orgId);
   };
 
   const handleAddUser = async (e) => {
@@ -160,7 +188,9 @@ const Users = () => {
           password: "",
           role: "employee",
           organization_id: "",
+          department_id: "",
           team_id: "",
+          manager_id: "",
         });
 
         fetchUsers();
@@ -208,8 +238,8 @@ const Users = () => {
           </div>
 
           {/* TABLE */}
-          <div className="bg-white   rounded-3xl  border  border-slate-200 shadow-sm overflow-hidden">
-            <table className="w-full">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-x-auto">
+            <table className="w-full min-w-[1180px]">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="text-left p-4 text-xs uppercase tracking-wider text-slate-500">
@@ -230,6 +260,18 @@ const Users = () => {
 
                   <th className="text-left p-4 text-xs uppercase tracking-wider text-slate-500">
                     Team
+                  </th>
+
+                  <th className="text-left p-4 text-xs uppercase tracking-wider text-slate-500">
+                    Department
+                  </th>
+
+                  <th className="text-left p-4 text-xs uppercase tracking-wider text-slate-500">
+                    Manager
+                  </th>
+
+                  <th className="text-left p-4 text-xs uppercase tracking-wider text-slate-500">
+                    Agent
                   </th>
 
                   <th className="text-left p-4 text-xs uppercase tracking-wider text-slate-500">
@@ -283,6 +325,33 @@ const Users = () => {
                       </td>
 
                       <td className="p-4">
+                        {user.department_name || "-"}
+                      </td>
+
+                      <td className="p-4">
+                        {user.manager_name || "-"}
+                      </td>
+
+                      <td className="p-4">
+                        {user.agent_installed_at ? (
+                          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                            Installed
+                          </span>
+                        ) : user.agent_token ? (
+                          <a
+                            href={`${API_BASE_URL}/api/agent/download-agent/${user.agent_token}`}
+                            onClick={(event) => event.stopPropagation()}
+                            className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white"
+                          >
+                            <Download size={14} />
+                            Agent
+                          </a>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+
+                      <td className="p-4">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold
       ${user.status === "Online"
@@ -298,7 +367,10 @@ const Users = () => {
 
                       <td className="p-4 text-center">
                         <button
-                          onClick={() => handleDelete(user.id)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleDelete(user.id);
+                          }}
                           className=" p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all"
                         >
                           <Trash2 size={16} />
@@ -308,7 +380,7 @@ const Users = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="6" className="p-8 text-center text-gray-400">
+                    <td colSpan="10" className="p-8 text-center text-gray-400">
                       <div className="flex flex-col items-center py-10 text-slate-400">
                         <UsersIcon size={50} />
 
@@ -372,6 +444,7 @@ const Users = () => {
               >
                 <option value="employee">Employee</option>
                 <option value="manager">Manager</option>
+                <option value="hr">HR</option>
                 <option value="executive">Executive</option>
               </select>
 
@@ -384,6 +457,24 @@ const Users = () => {
                 {orgs.map((org) => (
                   <option key={org.id} value={org.id}>
                     {org.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={formData.department_id}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    department_id: e.target.value,
+                  }))
+                }
+                className="w-full border p-3 rounded-xl"
+              >
+                <option value="">Select Department</option>
+                {departments.map((department) => (
+                  <option key={department.id} value={department.id}>
+                    {department.name}
                   </option>
                 ))}
               </select>
@@ -404,6 +495,26 @@ const Users = () => {
                     {team.team_name || team.name}
                   </option>
                 ))}
+              </select>
+
+              <select
+                value={formData.manager_id}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    manager_id: e.target.value,
+                  }))
+                }
+                className="w-full border p-3 rounded-xl"
+              >
+                <option value="">Select Manager</option>
+                {users
+                  .filter((user) => user.role === "manager")
+                  .map((manager) => (
+                    <option key={manager.id} value={manager.id}>
+                      {manager.name}
+                    </option>
+                  ))}
               </select>
 
               <div className="flex justify-end gap-3 pt-4">

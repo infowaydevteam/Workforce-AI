@@ -118,6 +118,8 @@ const EmployeeDetail = () => {
   const OFFLINE_TIME =
     28800 - Number(summary.total_working_time || 0);
 
+  const productivityScore = Number(summary.productivity_score || 0);
+
   return (
     <div className="p-8 bg-slate-50 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -139,6 +141,12 @@ const EmployeeDetail = () => {
 
               <p className="text-indigo-100 mt-1">
                 {user.email}
+              </p>
+
+              <p className="text-indigo-100 mt-1 text-sm">
+                {[user.department_name, user.team_name, user.manager_name]
+                  .filter(Boolean)
+                  .join(" / ")}
               </p>
             </div>
 
@@ -188,7 +196,7 @@ const EmployeeDetail = () => {
         </div>
 
         {/* SUMMARY CARDS */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {/* <div className="bg-white p-5 rounded-2xl border shadow-sm">
             <p className="text-slate-500 text-sm">Sessions</p>
             <h3 className="text-xl font-bold">{summary.total_sessions}</h3>
@@ -215,6 +223,13 @@ const EmployeeDetail = () => {
             <p className="text-xs uppercase tracking-wider text-slate-500 font-medium">Offline Time</p>
             <h3 className="text-3xl font-bold mt-3">
               {formatDuration(Math.max(OFFLINE_TIME, 0))}
+            </h3>
+          </div>
+
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+            <p className="text-xs uppercase tracking-wider text-slate-500 font-medium">Productivity</p>
+            <h3 className="text-3xl font-bold mt-3">
+              {productivityScore}%
             </h3>
           </div>
 
@@ -285,6 +300,8 @@ const EmployeeDetail = () => {
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-6 py-4 text-left text-xs uppercase tracking-wider font-semibold text-slate-500">App</th>
+                <th className="px-6 py-4 text-left text-xs uppercase tracking-wider font-semibold text-slate-500">Category</th>
+                <th className="px-6 py-4 text-left text-xs uppercase tracking-wider font-semibold text-slate-500">Score</th>
                 <th className="px-6 py-4 text-left text-xs uppercase tracking-wider font-semibold text-slate-500">Start</th>
                 <th className="px-6 py-4 text-left text-xs uppercase tracking-wider font-semibold text-slate-500">End</th>
                 <th className="px-6 py-4 text-left text-xs uppercase tracking-wider font-semibold text-slate-500">Duration</th>
@@ -295,6 +312,8 @@ const EmployeeDetail = () => {
               {activityLogs.map((a, i) => (
                 <tr key={i} className="border-t hover:bg-slate-50 transition-all">
                   <td className="px-6 py-4">{a.app_name}</td>
+                  <td className="px-6 py-4 capitalize">{a.activity_category || "neutral"}</td>
+                  <td className="px-6 py-4">{a.average_productivity ?? "-"}</td>
                   <td className="px-6 py-4">{formatTime(a.start_time)}</td>
                   <td className="px-6 py-4">{formatTime(a.end_time)}</td>
                   <td className="px-6 py-4">{formatDuration(a.duration)}</td>

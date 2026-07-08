@@ -9,6 +9,8 @@ import Organizations from './components/pages/admin/Organizations';
 import Teams from './components/pages/admin/Teams';
 import Reports from './components/pages/admin/Reports';
 import EmployeeDetail from './components/pages/admin/EmployeeDetail';
+import LevelOneFlow from './components/pages/admin/LevelOneFlow';
+import CompanyOnboarding from './components/pages/admin/CompanyOnboarding';
 
 const App = () => {
   return (
@@ -30,8 +32,10 @@ const App = () => {
           <Route path="/admin/employee" element={<Users />} />
           <Route path="/admin/employee/:id" element={<EmployeeDetail />} />
           <Route path="/admin/organizations" element={<Organizations />} />
-          <Route path="/admin/Teams" element={<Teams />} />
-          <Route path="/admin/Reports" element={<Reports />} />
+          <Route path="/admin/teams" element={<Teams />} />
+          <Route path="/admin/company-onboarding" element={<CompanyOnboarding />} />
+          <Route path="/admin/reports" element={<Reports />} />
+          <Route path="/admin/level-1-flow" element={<LevelOneFlow />} />
         </Route>
 
       </Routes>

@@ -11,6 +11,10 @@ const sessiondRoutes = require("./route/sessionRoutes");
 const activityRoutes = require("./route/activityRoutes");
 const idleRoutes = require("./route/idleRoutes");
 const agentRoutes = require("./route/agentRoutes");
+const level1Routes = require("./route/level1Route");
+const onboardingRoutes = require("./route/onboardingRoute");
+const { ensureLevel1Schema } = require("./services/level1Service");
+const { ensureOnboardingSchema } = require("./services/onboardingService");
 
 const app = express();
 
@@ -26,7 +30,23 @@ app.use("/api/session", sessiondRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/idle", idleRoutes);
 app.use("/api/agent", agentRoutes);
+app.use("/api/level1", level1Routes);
+app.use("/api/onboarding", onboardingRoutes);
 
-app.listen(process.env.PORT, () => {
-  console.log(`Server running on port ${process.env.PORT}`);
-});
+const startServer = async () => {
+  try {
+    await ensureLevel1Schema();
+    await ensureOnboardingSchema();
+    console.log("Level 1 schema ready");
+  } catch (error) {
+    console.error("Level 1 schema initialization failed:", error.message);
+  }
+
+  const port = process.env.PORT || 5000;
+
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+};
+
+startServer();

@@ -1,4 +1,5 @@
 const pool = require("../db");
+const { classifyActivity } = require("../services/level1Service");
 
 const logActivity = async (req, res) => {
   try {
@@ -8,6 +9,7 @@ const logActivity = async (req, res) => {
     const end = new Date(end_time);
 
     const duration = Math.floor((end - start) / 1000);
+    const classification = classifyActivity(app_name);
 
     // 🔥 STEP 1: GET LAST ACTIVITY
     const last = await pool.query(
@@ -35,15 +37,23 @@ const logActivity = async (req, res) => {
       await pool.query(
         `UPDATE activity_logs
          SET end_time = $1,
-             duration = $2
-         WHERE id = $3`,
-        [end_time, mergedDuration, prev.id]
+             duration = $2,
+             activity_category = $3,
+             productivity_score = $4
+         WHERE id = $5`,
+        [
+          end_time,
+          mergedDuration,
+          classification.activity_category,
+          classification.productivity_score,
+          prev.id,
+        ]
       );
 
       // update user status
       await pool.query(
         `UPDATE users
-         SET status = 'online', last_active = NOW()
+         SET status = 'Online', last_active = NOW()
          WHERE id = $1`,
         [user_id]
       );
@@ -54,15 +64,31 @@ const logActivity = async (req, res) => {
     // 🔥 STEP 3: INSERT NEW IF DIFFERENT APP
     const result = await pool.query(
       `INSERT INTO activity_logs
-       (user_id, app_name, start_time, end_time, duration)
-       VALUES ($1, $2, $3, $4, $5)
+       (
+        user_id,
+        app_name,
+        start_time,
+        end_time,
+        duration,
+        activity_category,
+        productivity_score
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [user_id, app_name, start_time, end_time, duration]
+      [
+        user_id,
+        app_name,
+        start_time,
+        end_time,
+        duration,
+        classification.activity_category,
+        classification.productivity_score,
+      ]
     );
 
     await pool.query(
       `UPDATE users
-       SET status = 'online', last_active = NOW()
+       SET status = 'Online', last_active = NOW()
        WHERE id = $1`,
       [user_id]
     );

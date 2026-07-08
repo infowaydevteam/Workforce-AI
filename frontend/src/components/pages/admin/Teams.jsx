@@ -5,11 +5,15 @@ import { API_BASE_URL } from "../../../../config";
 const Teams = () => {
   const [teams, setTeams] = useState([]);
   const [orgs, setOrgs] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [managers, setManagers] = useState([]);
   const [showModal, setShowModal] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
     organization_id: "",
+    department_id: "",
+    manager_id: "",
   });
 
 const fetchTeams = async () => {
@@ -53,9 +57,51 @@ const fetchOrgs = async () => {
   }
 };
 
+const fetchDepartments = async () => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(
+      `${API_BASE_URL}/api/level1/departments`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await res.json();
+    setDepartments(data);
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+const fetchManagers = async () => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(
+      `${API_BASE_URL}/api/employee`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await res.json();
+    setManagers(data.filter((user) => user.role === "manager"));
+  } catch (err) {
+    console.log(err);
+  }
+};
+
   useEffect(() => {
     fetchTeams();
     fetchOrgs();
+    fetchDepartments();
+    fetchManagers();
   }, []);
 
   // add team
@@ -78,6 +124,8 @@ const handleAdd = async (e) => {
     setForm({
       name: "",
       organization_id: "",
+      department_id: "",
+      manager_id: "",
     });
 
     fetchTeams();
@@ -147,6 +195,14 @@ const handleDelete = async (id) => {
                   Organization
                 </th>
 
+                <th className="text-left p-4 text-xs uppercase tracking-wider text-slate-500">
+                  Department
+                </th>
+
+                <th className="text-left p-4 text-xs uppercase tracking-wider text-slate-500">
+                  Manager
+                </th>
+
                 <th className="text-center p-4 text-xs uppercase tracking-wider text-slate-500">
                   Action
                 </th>
@@ -182,6 +238,14 @@ const handleDelete = async (id) => {
                       {team.organization_name}
                     </span>
 
+                  </td>
+
+                  <td className="p-4 text-slate-600">
+                    {team.department_name || "-"}
+                  </td>
+
+                  <td className="p-4 text-slate-600">
+                    {team.manager_name || "-"}
                   </td>
 
                   <td className="p-4 text-center">
@@ -247,6 +311,66 @@ const handleDelete = async (id) => {
                       {org.name}
                     </option>
                   ))}
+                </select>
+
+                <select
+                  className=" w-full border border-slate-300 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
+                  value={form.department_id}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      department_id: e.target.value,
+                    })
+                  }
+                >
+                  <option value="">
+                    Select Department
+                  </option>
+
+                  {departments
+                    .filter(
+                      (department) =>
+                        !form.organization_id ||
+                        String(department.organization_id) === String(form.organization_id)
+                    )
+                    .map((department) => (
+                      <option
+                        key={department.id}
+                        value={department.id}
+                      >
+                        {department.name}
+                      </option>
+                    ))}
+                </select>
+
+                <select
+                  className=" w-full border border-slate-300 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
+                  value={form.manager_id}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      manager_id: e.target.value,
+                    })
+                  }
+                >
+                  <option value="">
+                    Select Manager
+                  </option>
+
+                  {managers
+                    .filter(
+                      (manager) =>
+                        !form.organization_id ||
+                        String(manager.organization_id) === String(form.organization_id)
+                    )
+                    .map((manager) => (
+                      <option
+                        key={manager.id}
+                        value={manager.id}
+                      >
+                        {manager.name}
+                      </option>
+                    ))}
                 </select>
 
                 <div className="flex justify-end gap-3">

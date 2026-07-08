@@ -6,8 +6,8 @@ import {
     Building2,
     UsersRound,
     FileText,
-    BarChart3,
-    Settings,
+    ClipboardCheck,
+    Settings2,
 } from "lucide-react";
 import { Outlet, useNavigate } from "react-router-dom";
 
@@ -20,6 +20,7 @@ const AdminLayout = () => {
       items: [
         {
           name: "Dashboard",
+          path: "/admin",
           icon: <LayoutDashboard size={20} />,
           action: () => navigate("/admin"),
         },
@@ -31,16 +32,25 @@ const AdminLayout = () => {
       items: [
         {
           name: "Organizations",
+          path: "/admin/organizations",
           icon: <Building2 size={20} />,
           action: () => navigate("/admin/organizations"),
         },
         {
+          name: "Onboarding",
+          path: "/admin/company-onboarding",
+          icon: <Settings2 size={20} />,
+          action: () => navigate("/admin/company-onboarding"),
+        },
+        {
           name: "Teams",
+          path: "/admin/teams",
           icon: <UsersRound size={20} />,
           action: () => navigate("/admin/teams"),
         },
         {
           name: "Employees",
+          path: "/admin/employee",
           icon: <Users size={20} />,
           action: () => navigate("/admin/employee"),
         },
@@ -52,8 +62,15 @@ const AdminLayout = () => {
       items: [
         {
           name: "Reports",
+          path: "/admin/reports",
           icon: <FileText size={20} />,
           action: () => navigate("/admin/reports"),
+        },
+        {
+          name: "Level 1 Flow",
+          path: "/admin/level-1-flow",
+          icon: <ClipboardCheck size={20} />,
+          action: () => navigate("/admin/level-1-flow"),
         },
         // {
         //   name: "Productivity",

@@ -8,10 +8,18 @@ const getTeams = async (req, res) => {
     teams.id,
     teams.name AS team_name,
     teams.organization_id,
-    organizations.name AS organization_name
+    teams.department_id,
+    teams.manager_id,
+    organizations.name AS organization_name,
+    departments.name AS department_name,
+    managers.name AS manager_name
   FROM teams
   JOIN organizations 
   ON teams.organization_id = organizations.id
+  LEFT JOIN departments
+  ON teams.department_id = departments.id
+  LEFT JOIN users managers
+  ON teams.manager_id = managers.id
   ORDER BY teams.id DESC
 `);
 
@@ -25,13 +33,13 @@ const getTeams = async (req, res) => {
 // Add team
 const addTeam = async (req, res) => {
   try {
-    const { name, organization_id } = req.body;
+    const { name, organization_id, department_id, manager_id } = req.body;
 
     const result = await pool.query(
-      `INSERT INTO teams (name, organization_id)
-       VALUES ($1, $2)
+      `INSERT INTO teams (name, organization_id, department_id, manager_id)
+       VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [name, organization_id]
+      [name, organization_id, department_id || null, manager_id || null]
     );
 
     res.status(201).json(result.rows[0]);

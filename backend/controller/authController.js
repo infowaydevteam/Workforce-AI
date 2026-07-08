@@ -11,7 +11,10 @@ const register = async (req, res) => {
       password,
       role,
       organization_id,
+      department_id,
       team_id,
+      manager_id,
+      invitation_status,
     } = req.body;
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -27,18 +30,35 @@ const register = async (req, res) => {
         password,
         role,
         organization_id,
+        department_id,
         team_id,
+        manager_id,
+        invitation_status,
+        invited_at,
         agent_token
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7)
-      RETURNING id, name, email, role, agent_token`,
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),$9)
+      RETURNING
+        id,
+        name,
+        email,
+        role,
+        organization_id,
+        department_id,
+        team_id,
+        manager_id,
+        invitation_status,
+        agent_token`,
       [
         name,
         email,
         hashedPassword,
-        role,
+        role || "employee",
         organization_id,
+        department_id || null,
         team_id,
+        manager_id || null,
+        invitation_status || "invited",
         agentToken,
       ]
     );

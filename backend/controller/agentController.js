@@ -5,9 +5,14 @@ const verifyAgent = async (req, res) => {
     const { agent_token } = req.body;
 
     const user = await pool.query(
-      `SELECT id, name, email
-       FROM users
-       WHERE agent_token = $1`,
+      `UPDATE users
+       SET
+        agent_installed_at = COALESCE(agent_installed_at, NOW()),
+        invitation_status = 'accepted',
+        last_active = NOW()
+       WHERE agent_token = $1
+       RETURNING id, name, email, agent_installed_at, invitation_status
+      `,
       [agent_token]
     );
 
@@ -23,6 +28,8 @@ const verifyAgent = async (req, res) => {
       user_id: user.rows[0].id,
       name: user.rows[0].name,
       email: user.rows[0].email,
+      agent_installed_at: user.rows[0].agent_installed_at,
+      invitation_status: user.rows[0].invitation_status,
     });
   } catch (err) {
     console.error(err);

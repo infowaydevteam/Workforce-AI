@@ -4,9 +4,17 @@ const pool = require("../db");
 const getOrganizations = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, name, description
-      FROM organizations
-      ORDER BY id DESC
+      SELECT
+        o.id,
+        o.name,
+        o.description,
+        s.subscription_plan,
+        s.timezone,
+        s.onboarding_status
+      FROM organizations o
+      LEFT JOIN organization_onboarding_settings s
+        ON s.organization_id = o.id
+      ORDER BY o.id DESC
     `);
 
     res.status(200).json(result.rows);

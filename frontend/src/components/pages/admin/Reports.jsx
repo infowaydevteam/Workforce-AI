@@ -67,7 +67,7 @@ const Reports = () => {
     };
 
     fetchEmployees();
-  }, []);
+  }, [token]);
 
   // ===================== GENERATE REPORT =====================
   const generateReport = async () => {
@@ -171,13 +171,14 @@ const Reports = () => {
   }));
 
   const productivity =
-    report.summary.total_working_time > 0
+    report.summary.productivity_score ??
+    (report.summary.total_working_time > 0
       ? Math.round(
           (report.summary.active_time /
             report.summary.total_working_time) *
             100
         )
-      : 0;
+      : 0);
 
   return (
     <div className="min-h-screen bg-slate-100 p-6">
@@ -276,6 +277,8 @@ const Reports = () => {
             <thead>
               <tr className="text-left border-b">
                 <th className="p-3">App</th>
+                <th className="p-3">Category</th>
+                <th className="p-3">Score</th>
                 <th className="p-3">Start</th>
                 <th className="p-3">End</th>
                 <th className="p-3">Duration</th>
@@ -286,6 +289,8 @@ const Reports = () => {
               {(report.activityLogs || []).map((a, i) => (
                 <tr key={i} className="border-b hover:bg-slate-50">
                   <td className="p-3">{a.app_name}</td>
+                  <td className="p-3 capitalize">{a.activity_category || "neutral"}</td>
+                  <td className="p-3">{a.productivity_score ?? "-"}</td>
                   <td className="p-3">{formatDate(a.start_time)}</td>
                   <td className="p-3">{formatDate(a.end_time)}</td>
                   <td className="p-3">{formatDuration(a.duration)}</td>
@@ -309,6 +314,34 @@ const Reports = () => {
                     {new Date(w.week).toLocaleDateString("en-IN")}
                   </span>
                   <span>{formatDuration(w.total_time)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {report.reviews?.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border p-6">
+            <h2 className="font-bold mb-4">Review History</h2>
+
+            <div className="space-y-3">
+              {report.reviews.map((review) => (
+                <div
+                  key={review.id}
+                  className="flex items-center justify-between border-b py-3"
+                >
+                  <div>
+                    <p className="font-semibold capitalize">
+                      {review.reviewer_role} review
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {review.notes || "No notes"}
+                    </p>
+                  </div>
+
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                    {review.status}
+                  </span>
                 </div>
               ))}
             </div>

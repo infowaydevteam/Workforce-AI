@@ -1,12 +1,13 @@
 import React from 'react'
 import { useState } from "react";
-import { User, Lock, BarChart3 } from "lucide-react";
+import { Building2, User, Lock, BarChart3 } from "lucide-react";
 import { API_BASE_URL } from '../../../config';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [mode, setMode] = useState("login");
 
   const navigate = useNavigate();
 
@@ -54,6 +55,44 @@ const Login = () => {
 
       }, 1000);
 
+    } catch (err) {
+      console.error(err);
+      setError("Server error. Please try again.");
+    }
+  };
+
+  const handleCompanySignup = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    const form = e.target;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/level1/company-signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          company_name: form.company_name.value,
+          company_domain: form.company_domain.value,
+          admin_name: form.admin_name.value,
+          admin_email: form.admin_email.value,
+          admin_password: form.admin_password.value,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || "Company signup failed");
+        return;
+      }
+
+      setSuccess("Company created. Sign in with the admin account.");
+      setMode("login");
+      form.reset();
     } catch (err) {
       console.error(err);
       setError("Server error. Please try again.");
@@ -122,11 +161,11 @@ const Login = () => {
               </div>
 
               <h2 className="mt-4 text-3xl font-bold text-gray-900">
-                Welcome Back
+                {mode === "login" ? "Welcome Back" : "Create Company"}
               </h2>
 
               <p className="text-gray-500 mt-2">
-                Sign in to continue
+                {mode === "login" ? "Sign in to continue" : "Start Level 1 onboarding"}
               </p>
             </div>
 
@@ -142,10 +181,8 @@ const Login = () => {
               </div>
             )}
 
-            <form
-              onSubmit={handleLogin}
-              className="space-y-5"
-            >
+            {mode === "login" ? (
+            <form onSubmit={handleLogin} className="space-y-5">
               <div>
                 <label className="text-sm font-medium text-gray-700">
                   Email
@@ -195,14 +232,78 @@ const Login = () => {
                 Sign In
               </button>
             </form>
+            ) : (
+              <form onSubmit={handleCompanySignup} className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    Company
+                  </label>
+                  <div className="relative mt-2">
+                    <Building2
+                      className="absolute left-3 top-3.5 text-gray-400"
+                      size={18}
+                    />
+                    <input
+                      name="company_name"
+                      required
+                      placeholder="Company name"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <input
+                  name="company_domain"
+                  placeholder="Company domain"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+
+                <input
+                  name="admin_name"
+                  required
+                  placeholder="Admin name"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+
+                <input
+                  name="admin_email"
+                  type="email"
+                  required
+                  placeholder="Admin email"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+
+                <input
+                  name="admin_password"
+                  type="password"
+                  required
+                  placeholder="Admin password"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+
+                <button
+                  type="submit"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold transition-all shadow-lg"
+                >
+                  Create Company
+                </button>
+              </form>
+            )}
 
             <div className="mt-6 text-center text-sm">
               <span className="text-gray-500">
-                Need help?
+                {mode === "login" ? "New company?" : "Already have an account?"}
               </span>
 
-              <button className="ml-1 text-indigo-600 font-medium hover:underline">
-                Contact Support
+              <button
+                onClick={() => {
+                  setError("");
+                  setSuccess("");
+                  setMode(mode === "login" ? "signup" : "login");
+                }}
+                className="ml-1 text-indigo-600 font-medium hover:underline"
+              >
+                {mode === "login" ? "Create one" : "Sign in"}
               </button>
             </div>
           </div>
