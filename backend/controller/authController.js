@@ -44,9 +44,9 @@ const register = async (req, res) => {
       ]
     );
 
-    // Download Link
+    // Download Link — points to macOS DMG
     const downloadLink =
-      `${process.env.API_BASE_URL}/api/agent/download-agent/${agentToken}`;
+      `${process.env.API_BASE_URL}/api/agent/download-mac/${agentToken}`;
 
     // Email Send
     await sendAgentEmail({
