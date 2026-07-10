@@ -9,7 +9,7 @@ const logActivity = async (req, res) => {
 
     const duration = Math.floor((end - start) / 1000);
 
-    // 🔥 STEP 1: GET LAST ACTIVITY
+  
     const last = await pool.query(
       `SELECT * FROM activity_logs
        WHERE user_id = $1
@@ -18,7 +18,7 @@ const logActivity = async (req, res) => {
       [user_id]
     );
 
-    // 🔥 STEP 2: MERGE CONDITION
+
     if (
       last.rows.length > 0 &&
       last.rows[0].app_name === app_name
@@ -51,7 +51,7 @@ const logActivity = async (req, res) => {
       return res.json({ success: true, merged: true });
     }
 
-    // 🔥 STEP 3: INSERT NEW IF DIFFERENT APP
+  
     const result = await pool.query(
       `INSERT INTO activity_logs
        (user_id, app_name, start_time, end_time, duration)
@@ -75,7 +75,6 @@ const logActivity = async (req, res) => {
   }
 };
 
-// GET ACTIVITY
 const getActivity = async (req, res) => {
   try {
     const { userId } = req.params;

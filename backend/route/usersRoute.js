@@ -6,14 +6,14 @@ const router = express.Router();
 router.get(
   "/",
   verifyToken,
-  authorizeRole("admin"),
+  authorizeRole("superadmin","admin"),
   getUsers
 );
 
 router.delete(
   "/:id",
   verifyToken,
-  authorizeRole("admin"),
+  authorizeRole("superadmin","admin"),
   deleteUser
 );
 

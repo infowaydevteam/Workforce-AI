@@ -83,6 +83,7 @@ const AdminDashboard = () => {
       const data = await res.json();
 
       setStats(data);
+      console.log(data)
     } catch (err) {
       console.log(err);
     }
@@ -141,6 +142,7 @@ const AdminDashboard = () => {
       );
 
       const data = await res.json();
+      console.log("new",data)
 
       setOrgSummary(data);
     } catch (err) {

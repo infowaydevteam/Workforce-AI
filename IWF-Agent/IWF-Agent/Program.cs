@@ -10,10 +10,6 @@ class Program
         {
             Console.WriteLine("IWF Background Agent Started...");
 
-            // ==========================
-            // Read Saved Token
-            // ==========================
-
             if (!ConfigService.IsActivated())
             {
                 Console.WriteLine("Agent is not activated.");
@@ -34,15 +30,11 @@ class Program
 
             Console.WriteLine($"Logged User ID: {UserContext.UserId}");
 
-            // ==========================
-            // Start Session
-            // ==========================
+
 
             await ApiService.StartSession();
 
-            // ==========================
-            // Load Restricted Items
-            // ==========================
+
 
             var restrictedItems =
                 await ApiService.GetRestrictedItems();
@@ -65,9 +57,7 @@ class Program
                 );
             }
 
-            // ==========================
-            // Start Monitoring
-            // ==========================
+
 
             ActivityService.Start();
 

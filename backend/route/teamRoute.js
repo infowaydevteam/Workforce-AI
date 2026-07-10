@@ -3,11 +3,10 @@ const { getTeams, addTeam, deleteTeam } = require("../controller/teamController"
 const { authorizeRole, verifyToken } = require("../middleware/authMiddleware");
 const router = express.Router();
 
-
 router.get(
   "/",
   verifyToken,
-  authorizeRole("admin"),
+  authorizeRole("superadmin", "admin"),
   getTeams
 );
 
@@ -15,7 +14,7 @@ router.get(
 router.post(
   "/",
   verifyToken,
-  authorizeRole("admin"),
+  authorizeRole("superadmin","admin"),
   addTeam
 );
 
@@ -23,7 +22,7 @@ router.post(
 router.delete(
   "/:id",
   verifyToken,
-  authorizeRole("admin"),
+  authorizeRole("superadmin","admin"),
   deleteTeam
 );
 

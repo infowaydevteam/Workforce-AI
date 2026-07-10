@@ -10,6 +10,9 @@ const Users = () => {
   const [showModal, setShowModal] = useState(false);
   const navigate = useNavigate();
 
+  const role = localStorage.getItem("role");
+  const user = JSON.parse(localStorage.getItem("user"));
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -122,9 +125,14 @@ const Users = () => {
   };
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
+
     setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: value,
+      ...(name === "role" && value === "admin"
+        ? { team_id: "" }
+        : {}),
     }));
   };
 
@@ -140,38 +148,69 @@ const Users = () => {
     fetchTeamsByOrg(orgId);
   };
 
-  const handleAddUser = async (e) => {
-    e.preventDefault();
+useEffect(() => {
+  if (showModal && role === "admin") {
+    handleOrgChange({
+      target: {
+        value: user.organization_id,
+      },
+    });
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+    setFormData((prev) => ({
+      ...prev,
+      role: "employee",
+      organization_id: user.organization_id,
+      team_id: user.team_id, 
+    }));
+  }
+}, [showModal]);
+
+const handleAddUser = async (e) => {
+  e.preventDefault();
+
+  const payload = {
+    ...formData,
+  };
+
+  if (role !== "superadmin") {
+    payload.role = "employee"; 
+    payload.organization_id = user.organization_id;
+    payload.team_id = user.team_id; 
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      setShowModal(false);
+
+      setFormData({
+        name: "",
+        email: "",
+        password: "",
+        role: "employee",
+        organization_id: "",
+        team_id: "",
       });
 
-      const data = await response.json();
+      fetchUsers();
 
-      if (response.ok) {
-        setShowModal(false);
-        setFormData({
-          name: "",
-          email: "",
-          password: "",
-          role: "employee",
-          organization_id: "",
-          team_id: "",
-        });
-
-        fetchUsers();
-        alert("User added successfully");
-      } else {
-        alert(data.message);
-      }
-    } catch (error) {
-      console.error(error);
+      alert("User added successfully");
+    } else {
+      alert(data.message);
     }
-  };
+  } catch (error) {
+    console.error(error);
+  }
+};
 
   return (
     <>
@@ -367,47 +406,64 @@ const Users = () => {
                 required
               />
 
-              <select
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                className="w-full border p-3 rounded-xl"
-              >
-                <option value="employee">Employee</option>
-                <option value="manager">Manager</option>
-                <option value="executive">Executive</option>
-              </select>
+              {/* Role */}
+              {role === "superadmin" ? (
+                <select
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  className="w-full border p-3 rounded-xl"
+                >
+                  <option value="employee">Employee</option>
+                  <option value="admin">Admin</option>
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value="Employee"
+                  disabled
+                  className="w-full border p-3 rounded-xl bg-slate-100 cursor-not-allowed"
+                />
+              )}
 
-              <select
-                value={formData.organization_id}
-                onChange={handleOrgChange}
-                className="w-full border p-3 rounded-xl"
-              >
-                <option value="">Select Organization</option>
-                {orgs.map((org) => (
-                  <option key={org.id} value={org.id}>
-                    {org.name}
-                  </option>
-                ))}
-              </select>
+              {/* Organization */}
+              {role === "superadmin" && (
+                <select
+                  value={formData.organization_id}
+                  onChange={handleOrgChange}
+                  className="w-full border p-3 rounded-xl"
+                >
+                  <option value="">Select Organization</option>
 
-              <select
-                value={formData.team_id}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    team_id: e.target.value,
-                  }))
-                }
-                className="w-full border p-3 rounded-xl"
-              >
-                <option value="">Select Team</option>
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.team_name || team.name}
-                  </option>
-                ))}
-              </select>
+                  {orgs.map((org) => (
+                    <option key={org.id} value={org.id}>
+                      {org.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {/* Team */}
+              {role === "superadmin" && (
+                <select
+                  value={formData.team_id}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      team_id: e.target.value,
+                    }))
+                  }
+                  className="w-full border p-3 rounded-xl"
+                >
+                  <option value="">Select Team</option>
+
+                  {teams.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.team_name || team.name}
+                    </option>
+                  ))}
+                </select>
+              )}
 
               <div className="flex justify-end gap-3 pt-4">
                 <button
@@ -429,6 +485,7 @@ const Users = () => {
           </div>
         </div>
       )}
+
     </>
   );
 };

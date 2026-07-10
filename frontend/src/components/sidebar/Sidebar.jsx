@@ -13,6 +13,8 @@ const Sidebar = ({ menuItems }) => {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("role");
+    localStorage.removeItem("organization_id");
     navigate("/");
   };
 

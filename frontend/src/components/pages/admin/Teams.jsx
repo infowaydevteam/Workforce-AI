@@ -6,52 +6,55 @@ const Teams = () => {
   const [teams, setTeams] = useState([]);
   const [orgs, setOrgs] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const role = localStorage.getItem("role");
+  const user = JSON.parse(localStorage.getItem("user"));
 
   const [form, setForm] = useState({
     name: "",
-    organization_id: "",
+    organization_id:
+      user?.organization_id || "",
   });
 
-const fetchTeams = async () => {
-  try {
-    const token = localStorage.getItem("token");
+  const fetchTeams = async () => {
+    try {
+      const token = localStorage.getItem("token");
 
-    const res = await fetch(
-      `${API_BASE_URL}/api/teams`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+      const res = await fetch(
+        `${API_BASE_URL}/api/teams`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    const data = await res.json();
-    setTeams(data);
-  } catch (err) {
-    console.log(err);
-  }
-};
+      const data = await res.json();
+      setTeams(data);
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   // fetch orgs for dropdown
-const fetchOrgs = async () => {
-  try {
-    const token = localStorage.getItem("token");
+  const fetchOrgs = async () => {
+    try {
+      const token = localStorage.getItem("token");
 
-    const res = await fetch(
-      `${API_BASE_URL}/api/organization`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+      const res = await fetch(
+        `${API_BASE_URL}/api/organization`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    const data = await res.json();
-    setOrgs(data);
-  } catch (err) {
-    console.log(err);
-  }
-};
+      const data = await res.json();
+      setOrgs(data);
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   useEffect(() => {
     fetchTeams();
@@ -59,53 +62,53 @@ const fetchOrgs = async () => {
   }, []);
 
   // add team
-const handleAdd = async (e) => {
-  e.preventDefault();
+  const handleAdd = async (e) => {
+    e.preventDefault();
 
-  try {
-    const token = localStorage.getItem("token");
+    try {
+      const token = localStorage.getItem("token");
 
-    await fetch(`${API_BASE_URL}/api/teams`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(form),
-    });
-
-    setShowModal(false);
-    setForm({
-      name: "",
-      organization_id: "",
-    });
-
-    fetchTeams();
-  } catch (err) {
-    console.log(err);
-  }
-};
-
-  // delete team
-const handleDelete = async (id) => {
-  try {
-    const token = localStorage.getItem("token");
-
-    await fetch(
-      `${API_BASE_URL}/api/teams/${id}`,
-      {
-        method: "DELETE",
+      await fetch(`${API_BASE_URL}/api/teams`, {
+        method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-      }
-    );
+        body: JSON.stringify(form),
+      });
 
-    fetchTeams();
-  } catch (err) {
-    console.log(err);
-  }
-};
+      setShowModal(false);
+      setForm({
+        name: "",
+        organization_id: "",
+      });
+
+      fetchTeams();
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  // delete team
+  const handleDelete = async (id) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      await fetch(
+        `${API_BASE_URL}/api/teams/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      fetchTeams();
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   return (
     <div className="p-8 bg-slate-50 min-h-screen">
@@ -225,29 +228,31 @@ const handleDelete = async (id) => {
                   }
                 />
 
-                <select
-                  className=" w-full border border-slate-300 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
-                  value={form.organization_id}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      organization_id: e.target.value,
-                    })
-                  }
-                >
-                  <option value="">
-                    Select Organization
-                  </option>
-
-                  {orgs.map((org) => (
-                    <option
-                      key={org.id}
-                      value={org.id}
-                    >
-                      {org.name}
+                {role === "superadmin" && (
+                  <select
+                    className="w-full border border-slate-300 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
+                    value={form.organization_id}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        organization_id: e.target.value,
+                      })
+                    }
+                  >
+                    <option value="">
+                      Select Organization
                     </option>
-                  ))}
-                </select>
+
+                    {orgs.map((org) => (
+                      <option
+                        key={org.id}
+                        value={org.id}
+                      >
+                        {org.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
 
                 <div className="flex justify-end gap-3">
                   <button

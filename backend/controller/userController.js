@@ -1,53 +1,130 @@
 const pool = require("../db");
 
 // Get All Users
+
 const getUsers = async (req, res) => {
   try {
-    const result = await pool.query(`
-     SELECT 
-  users.id,
-  users.name,
-  users.email,
-  users.role,
-  users.status,
-  organizations.name AS organization_name,
-  teams.name AS team_name
-FROM users
-LEFT JOIN organizations
-  ON users.organization_id = organizations.id
-LEFT JOIN teams
-  ON users.team_id = teams.id
-WHERE users.role != 'admin'
-ORDER BY users.id DESC
-    `);
+    let result;
+
+    if (req.user.role === "superadmin") {
+      result = await pool.query(`
+        SELECT
+          users.id,
+          users.name,
+          users.email,
+          users.role,
+          users.status,
+          organizations.name AS organization_name,
+          teams.name AS team_name
+        FROM users
+        LEFT JOIN organizations
+          ON users.organization_id = organizations.id
+        LEFT JOIN teams
+          ON users.team_id = teams.id
+        WHERE users.role != 'superadmin'
+        ORDER BY users.id DESC
+      `);
+
+    } else if (req.user.role === "admin") {
+
+      result = await pool.query(
+        `
+        SELECT
+          users.id,
+          users.name,
+          users.email,
+          users.role,
+          users.status,
+          organizations.name AS organization_name,
+          teams.name AS team_name
+        FROM users
+        LEFT JOIN organizations
+          ON users.organization_id = organizations.id
+        LEFT JOIN teams
+          ON users.team_id = teams.id
+        WHERE users.organization_id = $1
+          AND users.role NOT IN ('superadmin', 'admin')
+        ORDER BY users.id DESC
+        `,
+        [req.user.organization_id]
+      );
+
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
 
     res.status(200).json(result.rows);
+
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Failed to fetch users" });
+
+    res.status(500).json({
+      message: "Failed to fetch users",
+    });
   }
 };
 
 // Delete User
 const deleteUser = async (req, res) => {
+  const client = await pool.connect();
+
   try {
     const { id } = req.params;
 
-    await pool.query(
+    await client.query("BEGIN");
+
+    // Restricted Alerts
+    await client.query(
+      "DELETE FROM restricted_alerts WHERE employee_id = $1",
+      [id]
+    );
+
+    // Activity Logs
+    await client.query(
+      "DELETE FROM activity_logs WHERE user_id = $1",
+      [id]
+    );
+
+    // Idle Logs
+    await client.query(
+      "DELETE FROM idle_logs WHERE user_id = $1",
+      [id]
+    );
+
+    // Sessions
+    await client.query(
+      "DELETE FROM sessions WHERE user_id = $1",
+      [id]
+    );
+  
+    await client.query(
       "DELETE FROM users WHERE id = $1",
       [id]
     );
 
-    res.status(200).json({
-      message: "User deleted successfully",
+    await client.query("COMMIT");
+
+    res.json({
+      success: true,
+      message: "User deleted successfully"
     });
+
   } catch (error) {
-    console.error("DELETE USER ERROR:", error);
+
+    await client.query("ROLLBACK");
+
+    console.error(error);
 
     res.status(500).json({
       success: false,
       message: error.message
     });
+
+  } finally {
+    client.release();
   }
 };
 
@@ -270,9 +347,7 @@ const getUserFullReport = async (req, res) => {
     let activityFilter = "";
     let idleFilter = "";
 
-    // =====================
-    // DATE FILTER
-    // =====================
+
     if (from && to) {
       params.push(from, to);
 
@@ -281,9 +356,7 @@ const getUserFullReport = async (req, res) => {
       idleFilter = `AND DATE(start_time) BETWEEN $2 AND $3`;
     }
 
-    // =====================
-    // USER
-    // =====================
+
     const user = await pool.query(
       `
       SELECT id, name, email, role, last_active
@@ -293,9 +366,7 @@ const getUserFullReport = async (req, res) => {
       [id]
     );
 
-    // =====================
-    // SESSIONS (LIMITED)
-    // =====================
+
     const sessions = await pool.query(
       `
       SELECT id, login_time, logout_time, total_duration
@@ -308,9 +379,7 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-    // =====================
-    // ACTIVITY LOGS (LIMITED)
-    // =====================
+
     const activityLogs = await pool.query(
       `
       SELECT app_name, start_time, end_time, duration
@@ -323,9 +392,7 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-    // =====================
-    // IDLE LOGS
-    // =====================
+
     const idleLogs = await pool.query(
       `
       SELECT start_time, end_time, duration
@@ -338,9 +405,7 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-    // =====================
-    // SUMMARY
-    // =====================
+
     const summary = await pool.query(
       `
       SELECT COALESCE(SUM(total_duration),0) AS total_working_time
@@ -371,9 +436,7 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-    // =====================
-    // APP USAGE
-    // =====================
+
     const appUsage = await pool.query(
       `
       SELECT app_name, SUM(duration) AS total_duration
@@ -386,9 +449,7 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-    // =====================
-    // WEEKLY SUMMARY (NEW FIX)
-    // =====================
+
     const weeklySummary = await pool.query(
       `
       SELECT
@@ -403,9 +464,7 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-    // =====================
-    // RESPONSE (CLEAN STRUCTURE)
-    // =====================
+
     return res.json({
       user: user.rows[0],
 
