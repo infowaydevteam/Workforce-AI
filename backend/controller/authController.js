@@ -44,9 +44,9 @@ const register = async (req, res) => {
       ]
     );
 
-    // Download Link — points to macOS DMG
-    const downloadLink =
-      `${process.env.API_BASE_URL}/api/agent/download-mac/${agentToken}`;
+    // Download Link — points to frontend download page (avoids Gmail HTTP block)
+    const frontendUrl = process.env.FRONTEND_URL || process.env.API_BASE_URL.replace(':5001', ':5173');
+    const downloadLink = `${frontendUrl}/download/${agentToken}`;
 
     // Email Send
     await sendAgentEmail({

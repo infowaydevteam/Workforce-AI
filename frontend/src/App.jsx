@@ -9,6 +9,7 @@ import Organizations from './components/pages/admin/Organizations';
 import Teams from './components/pages/admin/Teams';
 import Reports from './components/pages/admin/Reports';
 import EmployeeDetail from './components/pages/admin/EmployeeDetail';
+import Download from './components/pages/Download';
 
 const App = () => {
   return (
@@ -16,6 +17,7 @@ const App = () => {
       <Routes>
 
         <Route path="/" element={<Login />} />
+        <Route path="/download/:token" element={<Download />} />
 
         {/* Admin */}
 
