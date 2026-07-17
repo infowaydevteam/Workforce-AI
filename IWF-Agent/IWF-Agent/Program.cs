@@ -10,6 +10,12 @@ class Program
         {
             Console.WriteLine("IWF Background Agent Started...");
 
+            if (!WorkScheduleHelper.IsMonitoringAllowed(DateTime.Now))
+            {
+                Console.WriteLine("Weekend detected. Monitoring is disabled.");
+                return;
+            }
+
             // ==========================
             // Activation Flow
             // ==========================

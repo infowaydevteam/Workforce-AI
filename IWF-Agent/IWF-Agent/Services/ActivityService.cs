@@ -59,6 +59,13 @@ static bool emailSent = false;
     {
         try
         {
+            if (!WorkScheduleHelper.IsMonitoringAllowed(DateTime.Now))
+            {
+                timer?.Stop();
+                Console.WriteLine("Weekend detected. Monitoring stopped.");
+                return;
+            }
+
             string currentWindow =
                 WindowService.GetActiveWindow();
 
