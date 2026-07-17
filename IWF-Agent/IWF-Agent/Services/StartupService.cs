@@ -91,17 +91,10 @@ public static class StartupService
 
             File.WriteAllText(plistPath, plist);
 
-            // Load it immediately so it is active without a reboot
-            var psi = new ProcessStartInfo("launchctl", $"load {plistPath}")
-            {
-                UseShellExecute = false,
-                CreateNoWindow  = true
-            };
-
-            using var p = Process.Start(psi);
-            p?.WaitForExit();
-
-            Console.WriteLine($"Startup Registered (macOS LaunchAgent): {plistPath}");
+            // macOS loads LaunchAgents from this directory at the next login.
+            // Do not load it now: RunAtLoad would start a duplicate while the
+            // currently activated agent is already monitoring.
+            Console.WriteLine($"Startup registered for the next macOS login: {plistPath}");
         }
         catch (Exception ex)
         {

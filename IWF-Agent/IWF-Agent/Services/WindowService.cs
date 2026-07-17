@@ -27,12 +27,15 @@ public class WindowService
     {
         try
         {
-            var psi = new ProcessStartInfo("osascript", $"-e \"{script}\"")
+            var psi = new ProcessStartInfo("osascript")
             {
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+
+            psi.ArgumentList.Add("-e");
+            psi.ArgumentList.Add(script);
 
             using var p = Process.Start(psi)!;
             string output = p.StandardOutput.ReadToEnd().Trim();

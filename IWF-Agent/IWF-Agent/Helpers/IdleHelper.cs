@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 
 public class IdleHelper
 {
@@ -21,21 +22,23 @@ public class IdleHelper
     {
         try
         {
-            var psi = new ProcessStartInfo(
-                "bash",
-                "-c \"ioreg -c IOHIDSystem | awk '/HIDIdleTime/ {print $NF; exit}'\""
-            )
+            var psi = new ProcessStartInfo("/usr/sbin/ioreg")
             {
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
 
+            psi.ArgumentList.Add("-c");
+            psi.ArgumentList.Add("IOHIDSystem");
+
             using var p = Process.Start(psi)!;
             string raw = p.StandardOutput.ReadToEnd().Trim();
             p.WaitForExit();
 
-            if (long.TryParse(raw, out long nanoseconds))
+            Match match = Regex.Match(raw, "\\\"HIDIdleTime\\\"\\s*=\\s*(\\d+)");
+
+            if (match.Success && long.TryParse(match.Groups[1].Value, out long nanoseconds))
                 return (int)(nanoseconds / 1_000_000_000L);
 
             return 0;

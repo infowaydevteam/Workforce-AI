@@ -46,6 +46,11 @@ class Program
 
             Console.WriteLine($"Welcome! Logged in as User ID: {UserContext.UserId}");
 
+            if (!PlatformService.CanStartMonitoring())
+                return;
+
+            StartupService.Register();
+
             // ==========================
             // Start Session
             // ==========================
@@ -150,6 +155,11 @@ class Program
         Console.WriteLine("");
 
         UserContext.UserId = result.user_id;
+
+        if (!PlatformService.CanStartMonitoring())
+            return;
+
+        StartupService.Register();
 
         await ApiService.StartSession();
 

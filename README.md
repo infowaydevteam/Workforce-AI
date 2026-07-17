@@ -64,119 +64,96 @@ Send the following to the employee:
 
 ---
 
-## Employee Setup — Windows
+## Employee Guide — Install and Use the Desktop Agent
 
-### 1. Install Agent
+The agent runs on Windows and macOS. It records the foreground application,
+window title, active/idle time, sessions, and restricted-app/site events for
+the signed-in employee. It is intended for company-managed devices only.
 
-Extract `IWF-Agent.zip` and run:
+### Before you begin
 
-```
-Agent.exe
-```
+Your administrator must create your employee account and provide either:
 
-### 2. Activate Agent
+- an agent download link or package; and
+- an activation code, if the package was not pre-configured.
 
-Enter the Activation Code received from Admin.
+The agent needs a reachable backend URL. For an on-premise installation, use
+the server's LAN address (for example, `http://192.168.1.10:5001`), not
+`localhost`, unless the backend is running on the same computer.
 
-```
-8f64f883-9ba1-4fff-8512-77a55182a722
-```
+### Windows installation
 
-### 3. Start Monitoring
+1. Download `IWF-Agent.zip` from the employee download page and extract it.
+2. Keep `IWF-Agent.exe` and `config.json` together in the extracted folder.
+3. Double-click `IWF-Agent.exe`.
+4. On the first launch, enter the backend URL and your activation code when
+   prompted. The agent saves these values in its adjacent `config.json` file.
+5. Keep the agent running while you work. After activation, it registers to
+   start automatically when you sign in to Windows.
 
-After successful activation:
+If Windows SmartScreen shows a warning for an unsigned internal build, contact
+your administrator to confirm the package source before continuing.
 
-- Agent starts automatically
-- Activity tracking begins
-- Idle tracking begins
+### macOS installation
 
-No further action required.
+The downloadable macOS package is self-contained: employees do **not** need a
+.NET SDK. Choose the package that matches the Mac:
 
----
+- Apple Silicon (M1/M2/M3/M4): `osx-arm64`
+- Intel Mac: `osx-x64`
 
-## Employee Setup — macOS
-
-### Prerequisites
-
-1. **Install .NET 10 SDK**
-   Download from [dot.net](https://dot.net) or via Homebrew:
+1. Download and open `IWF-Agent-mac.dmg` (or extract `IWF-Agent-mac.zip`).
+2. Move `IWF-Agent` and its `config.json` to a permanent folder, such as
+   `~/Applications/IWF-Agent`. Keep both files in the same folder.
+3. In Terminal, make the binary executable and launch it:
 
    ```bash
-   brew install dotnet@10
+   cd ~/Applications/IWF-Agent
+   chmod +x IWF-Agent
+   ./IWF-Agent
    ```
 
-2. **Grant Accessibility Permission**
-   The agent uses AppleScript to detect the active app and window title.
-   macOS requires explicit permission for this.
+4. If macOS blocks the unsigned internal app, open **System Settings → Privacy
+   & Security** and choose **Open Anyway** for IWF-Agent, then launch it again.
+5. Grant Accessibility permission in **System Settings → Privacy & Security →
+   Accessibility**. Add the IWF-Agent binary; when developing from Terminal,
+   add Terminal instead.
+6. Enter the backend URL and activation code when prompted, unless your
+   downloaded package already contains them in `config.json`.
 
-   Go to:
-   ```
-   System Settings → Privacy & Security → Accessibility
-   ```
-   Add and enable your Terminal app (or the built IWF-Agent binary).
+Once activated, the agent checks Accessibility permission before collecting any
+activity. It registers a macOS LaunchAgent and starts automatically at your
+next login. The current launch continues running; a second copy is not started.
 
-### 1. Build the Agent for macOS
+### Configuration and activation
 
-Clone the repo and build from the `kevin_mac` branch:
-
-```bash
-git clone https://github.com/infowaydevteam/Workforce-AI.git
-cd Workforce-AI
-git checkout kevin_mac
-cd "IWF-Agent/IWF-Agent"
-```
-
-**Apple Silicon (M1/M2/M3):**
-```bash
-dotnet publish -r osx-arm64 -c Release -o ./publish/mac
-```
-
-**Intel Mac:**
-```bash
-dotnet publish -r osx-x64 -c Release -o ./publish/mac
-```
-
-The binary will be at:
-```
-./publish/mac/IWF-Agent
-```
-
-### 2. Add Your config.json
-
-Copy `config.json` into the publish folder and set your backend URL:
+The agent stores its setup beside the executable in `config.json`:
 
 ```json
 {
-  "api_base_url": "http://YOUR_SERVER_IP:5001",
-  "token": ""
+  "agent_token": "",
+  "api_base_url": "http://YOUR_SERVER_IP:5001"
 }
 ```
 
-### 3. Run the Agent
+Do not share `agent_token` or the activation code. If a token is missing or no
+longer valid, the agent asks for activation again. To point the agent to a new
+server, stop it, update `api_base_url`, and launch it again.
 
-```bash
-chmod +x ./publish/mac/IWF-Agent
-./publish/mac/IWF-Agent
-```
+### Normal operation and support
 
-### 4. Activate Agent
+- The agent checks activity every 5 seconds and sends active periods in
+  30-second chunks.
+- It records an idle period after 5 seconds without input.
+- It does not start or continue monitoring on Saturday or Sunday.
+- On macOS, activity cannot be collected until Accessibility permission is
+  granted.
+- To stop the agent, close its terminal window or press `Ctrl+C` while it is
+  running. Contact your administrator before removing its startup entry or
+  deleting `config.json`.
 
-Enter the Activation Code received from Admin when prompted:
-
-```
-8f64f883-9ba1-4fff-8512-77a55182a722
-```
-
-### 5. Start Monitoring
-
-After successful activation:
-
-- Agent starts automatically
-- App and window activity is tracked via AppleScript
-- Idle time is detected via macOS IOKit (`ioreg`)
-- Restricted app/site alerts are sent to the manager by email
-
-No further action required. The agent runs silently in the background.
+If activation fails, verify the backend URL, network/VPN access, and activation
+code with your administrator.
 
 ---
 
