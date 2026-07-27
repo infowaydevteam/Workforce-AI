@@ -8,8 +8,10 @@ const logActivity = async (req, res) => {
     const end = new Date(end_time);
 
     const duration = Math.floor((end - start) / 1000);
+    console.log("START =>", start_time);
+    console.log("END =>", end_time);
+    console.log("CALCULATED DURATION =>", duration);
 
-  
     const last = await pool.query(
       `SELECT * FROM activity_logs
        WHERE user_id = $1
@@ -51,7 +53,7 @@ const logActivity = async (req, res) => {
       return res.json({ success: true, merged: true });
     }
 
-  
+
     const result = await pool.query(
       `INSERT INTO activity_logs
        (user_id, app_name, start_time, end_time, duration)
@@ -93,6 +95,6 @@ const getActivity = async (req, res) => {
 };
 
 module.exports = {
-   logActivity,
-   getActivity
+  logActivity,
+  getActivity
 };

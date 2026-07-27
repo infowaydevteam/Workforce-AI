@@ -143,11 +143,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\IWF\\IWF-Agent\\IWF-Agent-Launcher - Copy\\IWF-Agent.csproj",
+      "projectUniqueName": "D:\\react\\IWF\\IWF-Agent\\IWF-Agent-Launcher - Copy\\IWF-Agent.csproj",
       "projectName": "Launcher",
-      "projectPath": "D:\\IWF\\IWF-Agent\\IWF-Agent-Launcher - Copy\\IWF-Agent.csproj",
+      "projectPath": "D:\\react\\IWF\\IWF-Agent\\IWF-Agent-Launcher - Copy\\IWF-Agent.csproj",
       "packagesPath": "C:\\Users\\Abhis\\.nuget\\packages\\",
-      "outputPath": "D:\\IWF\\IWF-Agent\\IWF-Agent-Launcher - Copy\\obj\\",
+      "outputPath": "D:\\react\\IWF\\IWF-Agent\\IWF-Agent-Launcher - Copy\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Abhis\\AppData\\Roaming\\NuGet\\NuGet.Config"

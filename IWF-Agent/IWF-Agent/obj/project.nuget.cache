@@ -1,10 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "k2EpfOmELco=",
+  "dgSpecHash": "XSgBidik+yY=",
   "success": true,
-  "projectFilePath": "D:\\IWF\\IWF-Agent\\IWF-Agent\\IWF-Agent.csproj",
+  "projectFilePath": "D:\\react\\IWF\\IWF-Agent\\IWF-Agent\\IWF-Agent.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Abhis\\.nuget\\packages\\microsoft.net.illink.tasks\\10.0.8\\microsoft.net.illink.tasks.10.0.8.nupkg.sha512",
+    "C:\\Users\\Abhis\\.nuget\\packages\\microsoft.win32.systemevents\\10.0.10\\microsoft.win32.systemevents.10.0.10.nupkg.sha512",
     "C:\\Users\\Abhis\\.nuget\\packages\\system.net.http.json\\10.0.8\\system.net.http.json.10.0.8.nupkg.sha512",
     "C:\\Users\\Abhis\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\10.0.8\\microsoft.netcore.app.runtime.win-x64.10.0.8.nupkg.sha512",
     "C:\\Users\\Abhis\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\10.0.8\\microsoft.windowsdesktop.app.runtime.win-x64.10.0.8.nupkg.sha512",
@@ -14,13 +15,25 @@
     {
       "code": "NU1510",
       "level": "Warning",
-      "message": "PackageReference System.Net.Http.Json will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.",
-      "projectPath": "D:\\IWF\\IWF-Agent\\IWF-Agent\\IWF-Agent.csproj",
+      "message": "PackageReference Microsoft.Win32.SystemEvents will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.",
+      "projectPath": "D:\\react\\IWF\\IWF-Agent\\IWF-Agent\\IWF-Agent.csproj",
       "warningLevel": 1,
-      "filePath": "D:\\IWF\\IWF-Agent\\IWF-Agent\\IWF-Agent.csproj",
+      "filePath": "D:\\react\\IWF\\IWF-Agent\\IWF-Agent\\IWF-Agent.csproj",
+      "libraryId": "Microsoft.Win32.SystemEvents",
+      "targetGraphs": [
+        "net10.0-windows7.0"
+      ]
+    },
+    {
+      "code": "NU1510",
+      "level": "Warning",
+      "message": "PackageReference System.Net.Http.Json will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.",
+      "projectPath": "D:\\react\\IWF\\IWF-Agent\\IWF-Agent\\IWF-Agent.csproj",
+      "warningLevel": 1,
+      "filePath": "D:\\react\\IWF\\IWF-Agent\\IWF-Agent\\IWF-Agent.csproj",
       "libraryId": "System.Net.Http.Json",
       "targetGraphs": [
-        "net10.0"
+        "net10.0-windows7.0"
       ]
     }
   ]

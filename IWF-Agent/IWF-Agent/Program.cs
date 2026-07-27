@@ -28,38 +28,71 @@ class Program
 
             UserContext.UserId = result.user_id;
 
-            Console.WriteLine($"Logged User ID: {UserContext.UserId}");
+            Console.WriteLine(
+                $"Logged User ID: {UserContext.UserId}"
+            );
 
-
-
+            // START SESSION
             await ApiService.StartSession();
+            Console.WriteLine("START SESSION API CALL");
 
+            // Load Restricted Apps / Websites
+var restrictedItems =
+    await ApiService.GetRestrictedItems();
 
+if (restrictedItems != null &&
+    restrictedItems.Success)
+{
+    RestrictedAppService.Load(
+        restrictedItems.Apps
+    );
 
-            var restrictedItems =
-                await ApiService.GetRestrictedItems();
+    RestrictedSiteService.Load(
+        restrictedItems.Sites
+    );
+}
+else
+{
+    Console.WriteLine(
+        "Failed to load restricted items."
+    );
+}
 
-            if (restrictedItems != null &&
-                restrictedItems.Success)
+// Load Tracked Websites
+await ApiService.GetTrackedWebsites();
+
+// Start Services
+ActivityService.Start();
+
+Console.WriteLine(
+    "Activity Service Started"
+);
+
+LockService.Start();
+
+            // HEARTBEAT
+            _ = Task.Run(async () =>
             {
-                RestrictedAppService.Load(
-                    restrictedItems.Apps
-                );
+                while (true)
+                {
+                    try
+                    {
+                        await ApiService.SendHeartbeat();
 
-                RestrictedSiteService.Load(
-                    restrictedItems.Sites
-                );
-            }
-            else
-            {
-                Console.WriteLine(
-                    "Failed to load restricted items."
-                );
-            }
+                        Console.WriteLine(
+                            $"Heartbeat Sent : {DateTime.Now}"
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(
+                            $"Heartbeat Error : {ex.Message}"
+                        );
+                    }
 
-
-
-            ActivityService.Start();
+                    await Task.Delay(10000);
+                }
+            });
 
             await Task.Delay(Timeout.Infinite);
         }
@@ -69,7 +102,14 @@ class Program
         }
         finally
         {
+            Console.WriteLine(
+                "Stopping Activity Service..."
+            );
+
+            LockService.Stop();
+
             await ActivityService.Stop();
+            
         }
     }
 }

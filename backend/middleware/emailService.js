@@ -179,7 +179,95 @@ const sendRestrictedWebsiteAlert = async ({
   }
 };
 
+const sendIdleAlertEmail = async ({
+  managerEmail,
+  managerName,
+  employeeName,
+  duration,
+}) => {
+  try {
+    await transporter.sendMail({
+      from: `"IWF Team" <${process.env.EMAIL_USER}>`,
+      to: managerEmail,
+      subject: "🚨 IWF Alert - Employee Idle for More Than 1 Hour",
+
+      html: `
+      <div style="font-family:Arial;padding:20px;line-height:1.6;">
+
+        <h2 style="color:#f59e0b;">
+          Employee Idle Alert
+        </h2>
+
+        <p>Hello <b>${managerName}</b>,</p>
+
+        <p>
+          An employee has been idle for more than <b>1 hour</b>.
+        </p>
+
+        <table
+          style="
+            border-collapse:collapse;
+            margin-top:15px;
+          "
+        >
+
+          <tr>
+            <td style="padding:8px;font-weight:bold;">
+              Employee
+            </td>
+
+            <td style="padding:8px;">
+              ${employeeName}
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:8px;font-weight:bold;">
+              Idle Duration
+            </td>
+
+            <td style="padding:8px;">
+              ${Math.floor(duration / 60)} Minutes
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:8px;font-weight:bold;">
+              Alert Time
+            </td>
+
+            <td style="padding:8px;">
+              ${new Date().toLocaleString()}
+            </td>
+          </tr>
+
+        </table>
+
+        <br>
+
+        <p style="color:#b45309;font-weight:bold;">
+          Please verify the employee's activity.
+        </p>
+
+        <br>
+
+        <p>
+          Regards,<br>
+          IWF Team
+        </p>
+
+      </div>
+      `,
+    });
+
+    console.log("Idle Alert Email Sent");
+  } catch (err) {
+    console.error("Idle Alert Email Error:", err.message);
+  }
+};
+
 module.exports = {
   sendAgentEmail,
-  sendRestrictedWebsiteAlert
+  sendRestrictedWebsiteAlert,
+  sendIdleAlertEmail
 };

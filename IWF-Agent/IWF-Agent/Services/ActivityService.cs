@@ -10,8 +10,11 @@ public class ActivityService
     static DateTime lastActivitySave;
 
     static bool isIdle = false;
+    static bool idleAlertSent = false;
 
     static DateTime idleStartTime;
+
+    static string idleApp = "";
 
     // Restricted Website Timer
 
@@ -26,9 +29,15 @@ static bool emailSent = false;
     public static void Start()
     {
         Console.WriteLine("Activity Service Started");
+lastWindow = WindowService.GetDisplayName();
 
-        lastWindow =
-            WindowService.GetActiveWindow();
+string matchedWebsite =
+    TrackedWebsiteService.GetMatchedWebsite(lastWindow);
+
+if (!string.IsNullOrEmpty(matchedWebsite))
+{
+    lastWindow = matchedWebsite;
+}
 
         lastActivitySave =
             DateTime.Now;
@@ -37,9 +46,13 @@ static bool emailSent = false;
             $"Initial Window: {lastWindow}"
         );
 
-        _ = ApiService.UpdateStatus(
-            "Online"
-        );
+
+        if(!UserSessionState.IsLocked)
+{
+    _ = ApiService.UpdateStatus(
+        "Online"
+    );
+}
 
         timer = new System.Timers.Timer(
             5000
@@ -59,11 +72,32 @@ static bool emailSent = false;
     {
         try
         {
-            string currentWindow =
-                WindowService.GetActiveWindow();
 
-                string title =
-    WindowService.GetActiveWindowTitle();
+ // =====================
+        // WINDOWS LOCK CHECK
+        // =====================
+        if (UserSessionState.IsLocked)
+        {
+            Console.WriteLine(
+                "PC Locked - Skipping Activity Tracking"
+            );
+
+            return;
+        }
+
+string appName = WindowService.GetActiveWindow();
+
+string title = WindowService.GetActiveWindowTitle();
+
+string currentWindow = WindowService.GetDisplayName();
+
+string matchedWebsite =
+    TrackedWebsiteService.GetMatchedWebsite(currentWindow);
+
+if (!string.IsNullOrEmpty(matchedWebsite))
+{
+    currentWindow = matchedWebsite;
+}
 
             int idleSeconds = IdleHelper.GetIdleTime();
 
@@ -75,59 +109,77 @@ bool idle = idleSeconds >= 5;
                 $"Idle: {idle} | Window: {currentWindow}"
             );
 
-            // =====================
-            // IDLE START
-            // =====================
-            if (idle)
-            {
-                if (!isIdle)
-                {
-                    isIdle = true;
+// =====================
+// IDLE START
+// =====================
+if (idle)
+{
+    if (!isIdle)
+    {
+        isIdle = true;
 
-                    idleStartTime =
-                        DateTime.Now;
+        idleStartTime = DateTime.Now;
 
-                    Console.WriteLine(
-                        "Idle Started"
-                    );
+        idleApp = lastWindow;
 
-                    await ApiService.SendActivity(
-                        lastWindow,
-                        lastActivitySave,
-                        DateTime.Now
-                    );
+        Console.WriteLine("Idle Started");
 
-                    await ApiService.UpdateStatus(
-                        "Idle"
-                    );
-                }
+        await ApiService.SendActivity(
+            lastWindow,
+            lastActivitySave,
+            DateTime.Now
+        );
 
-                return;
-            }
+        await ApiService.UpdateStatus("Idle");
+    }
+
+    // Check every 5 seconds while idle
+    double idleMinutes =
+        (DateTime.Now - idleStartTime).TotalMinutes;
+
+    if (idleMinutes >= 60 && !idleAlertSent)
+    {
+        idleAlertSent = true;
+
+        Console.WriteLine(
+            $"Idle Alert Triggered ({idleMinutes:F1} min)"
+        );
+
+        await ApiService.SendIdleAlert(
+            UserContext.UserId,
+            idleMinutes * 60
+        );
+    }
+
+    return;
+}
 
             // =====================
             // IDLE END
             // =====================
             if (isIdle)
-            {
-                isIdle = false;
+{
+    isIdle = false;
 
-                Console.WriteLine(
-                    "Idle Ended"
-                );
+    idleAlertSent = false;
 
-                await ApiService.SendIdle(
-                    idleStartTime,
-                    DateTime.Now
-                );
+    Console.WriteLine(
+        "Idle Ended"
+    );
 
-                lastActivitySave =
-                    DateTime.Now;
+    await ApiService.SendIdle(
+        idleApp,
+        idleStartTime,
+        DateTime.Now
+    );
 
-                await ApiService.UpdateStatus(
-                    "Online"
-                );
-            }
+    lastActivitySave =
+        DateTime.Now;
+
+    await ApiService.UpdateStatus(
+        "Online"
+    );
+}
 
             // =====================
             // APP SWITCH
@@ -158,10 +210,10 @@ bool idle = idleSeconds >= 5;
 // =====================
 
 string matchedApp =
-    RestrictedAppService.GetMatchedApp(currentWindow);
+    RestrictedAppService.GetMatchedApp(appName);
 
 string matchedSite =
-    RestrictedSiteService.GetMatchedSite(title);
+    RestrictedSiteService.GetMatchedSite(currentWindow);
 
 string restrictedName = "";
 
@@ -271,6 +323,7 @@ public static async Task Stop()
         if (isIdle)
         {
             await ApiService.SendIdle(
+                   idleApp,
                 idleStartTime,
                 now
             );
@@ -299,5 +352,15 @@ public static async Task Stop()
             $"Stop Error: {ex.Message}"
         );
     }
+}
+
+public static void ResetIdle()
+{
+    isIdle = false;
+    idleAlertSent = false;
+    idleApp = "";
+    lastActivitySave = DateTime.Now;
+
+    Console.WriteLine("Idle State Reset");
 }
 }

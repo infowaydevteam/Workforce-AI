@@ -99,7 +99,7 @@ const deleteUser = async (req, res) => {
       "DELETE FROM sessions WHERE user_id = $1",
       [id]
     );
-  
+
     await client.query(
       "DELETE FROM users WHERE id = $1",
       [id]
@@ -128,23 +128,71 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// const updateStatus = async (req, res) => {
+//   try {
+//     const { user_id, status } = req.body;
+//     console.log("STATUS REQUEST:", req.body);
+
+//     const formattedStatus =
+//       status.charAt(0).toUpperCase() +
+//       status.slice(1).toLowerCase();
+
+//     const result = await pool.query(
+//       `UPDATE users
+//        SET status = $1,
+//            last_active = NOW()
+//        WHERE id = $2
+//        RETURNING *`,
+//       [formattedStatus, user_id]
+//     );
+
+//     res.json({
+//       success: true,
+//       data: result.rows[0],
+//     });
+//   } catch (err) {
+//     res.status(500).json({
+//       success: false,
+//       error: err.message,
+//     });
+//   }
+// };
+
+
+
+
+// controller
+
 const updateStatus = async (req, res) => {
   try {
     const { user_id, status } = req.body;
+
     console.log("STATUS REQUEST:", req.body);
 
     const formattedStatus =
       status.charAt(0).toUpperCase() +
       status.slice(1).toLowerCase();
 
-    const result = await pool.query(
-      `UPDATE users
-       SET status = $1,
-           last_active = NOW()
-       WHERE id = $2
-       RETURNING *`,
-      [formattedStatus, user_id]
-    );
+    let result;
+
+    if (formattedStatus === "Online") {
+      result = await pool.query(
+        `UPDATE users
+         SET status = $1,
+             last_active = NOW()
+         WHERE id = $2
+         RETURNING *`,
+        [formattedStatus, user_id]
+      );
+    } else {
+      result = await pool.query(
+        `UPDATE users
+         SET status = $1
+         WHERE id = $2
+         RETURNING *`,
+        [formattedStatus, user_id]
+      );
+    }
 
     res.json({
       success: true,
@@ -158,7 +206,8 @@ const updateStatus = async (req, res) => {
   }
 };
 
-// controller
+
+
 const getEmployeeById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -257,43 +306,76 @@ const getActivitySummary = async (req, res) => {
 
     let sessionFilter = `WHERE user_id = $1`;
     let idleFilter = `WHERE user_id = $1`;
+    let activityFilter = `WHERE user_id = $1`;
 
     const params = [id];
 
     if (date) {
       sessionFilter += ` AND DATE(login_time) = $2`;
       idleFilter += ` AND DATE(start_time) = $2`;
+      activityFilter += ` AND DATE(start_time) = $2`;
+
       params.push(date);
     }
 
-    const session = await pool.query(`
-      SELECT 
-        SUM(total_duration) AS total_working_time,
-        COUNT(*) AS total_sessions
-      FROM sessions
-      ${sessionFilter}
-    `, params);
+    // Working Time (Completed + Running Sessions)
+    const session = await pool.query(
+  `
+  SELECT
+    COUNT(*) AS total_sessions,
 
-    const idle = await pool.query(`
-      SELECT SUM(duration) AS idle_time
+    COALESCE(
+      SUM(
+        CASE
+          WHEN logout_time IS NULL
+          THEN EXTRACT(EPOCH FROM (NOW() - login_time))
+          ELSE total_duration
+        END
+      ),
+      0
+    ) AS total_working_time
+
+  FROM sessions
+  ${sessionFilter}
+  `,
+  params
+);
+
+    // Idle Time
+    const idle = await pool.query(
+      `
+      SELECT
+        COALESCE(SUM(duration),0) AS idle_time
       FROM idle_logs
       ${idleFilter}
-    `, params);
+      `,
+      params
+    );
 
-    const active = await pool.query(`
-      SELECT SUM(duration) AS active_time
+    // Active Time
+    const active = await pool.query(
+      `
+      SELECT
+        COALESCE(SUM(duration),0) AS active_time
       FROM activity_logs
-      ${idleFilter}
-    `, params);
+      ${activityFilter}
+      `,
+      params
+    );
 
     res.json({
-      total_sessions: session.rows[0].total_sessions || 0,
-      total_working_time: session.rows[0].total_working_time || 0,
-      active_time: active.rows[0].active_time || 0,
-      idle_time: idle.rows[0].idle_time || 0,
+      total_sessions: Number(session.rows[0].total_sessions),
+      total_working_time: Number(session.rows[0].total_working_time),
+      active_time: Number(active.rows[0].active_time),
+      idle_time: Number(idle.rows[0].idle_time),
     });
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.log(err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };
 

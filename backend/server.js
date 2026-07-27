@@ -15,6 +15,8 @@ const alertRoutes = require("./route/alertRoute");
 const restrictedRoute = require("./route/restrictedRoute");
 const heartbeatRoute = require("./route/heartbeatRoute");
 const startOfflineChecker = require("./services/offlineChecker");
+const teamReportRoutes = require("./route/teamsReportRouter");
+const websiteRoute = require("./route/websiteRoute");
 
 const app = express();
 
@@ -33,7 +35,11 @@ app.use("/api/agent", agentRoutes);
 app.use("/api/alerts", alertRoutes);
 app.use("/api/restricted-items", restrictedRoute);
 app.use("/api/heartbeat", heartbeatRoute);
-
+app.use(
+"/api/team-report",
+teamReportRoutes
+);
+app.use("/api/websites", websiteRoute);
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);
