@@ -21,8 +21,7 @@ const COLORS = ["#4f46e5", "#facc15", "#22c55e"];
 
 // ---------------- TIME FORMATTER ----------------
 const formatDuration = (seconds) => {
-
-  const sec = Math.floor(Number(seconds || 0));
+  const sec = Math.max(0, Number(seconds || 0));
 
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
@@ -30,7 +29,6 @@ const formatDuration = (seconds) => {
 
   if (h > 0) return `${h}h ${m}m ${s}s`;
   if (m > 0) return `${m}m ${s}s`;
-
   return `${s}s`;
 };
 
@@ -108,32 +106,23 @@ const EmployeeDetail = () => {
 
   const loginChart = loginHistory.map((l) => ({
     time: formatTime(l.login_time),
-    duration: Number(l.total_duration),
+    duration: Math.max(0, Number(l.total_duration || 0)),
   }));
 
   const appChart = appUsage.map((a) => ({
     name: a.app_name,
-    usage: Number(a.total_duration),
+    usage: Math.max(0, Number(a.total_duration || 0)),
   }));
 
-  console.log("activity", appChart)
+  console.log("activity",appChart)
 
   const pieData = [
-    { name: "Active", value: Number(summary.active_time || 0) },
-    { name: "Idle", value: Number(summary.idle_time || 0) },
+    { name: "Active", value: Math.max(0, Number(summary.active_time || 0)) },
+    { name: "Idle", value: Math.max(0, Number(summary.idle_time || 0)) },
   ];
 
-  const workingTime = Number(summary.total_working_time || 0);
-  const activeTime = Number(summary.active_time || 0);
-  const idleTime = Number(summary.idle_time || 0);
-
-  const offlineTime = Math.max(
-    workingTime - (activeTime + idleTime),
-    0
-  );
-  console.log(formatDuration(offlineTime))
-
-  console.log(summary)
+  const OFFLINE_TIME =
+    28800 - Number(summary.total_working_time || 0);
 
   return (
     <div className="p-8 bg-slate-50 min-h-screen">
@@ -206,28 +195,32 @@ const EmployeeDetail = () => {
 
         {/* SUMMARY CARDS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* <div className="bg-white p-5 rounded-2xl border shadow-sm">
+            <p className="text-slate-500 text-sm">Sessions</p>
+            <h3 className="text-xl font-bold">{summary.total_sessions}</h3>
+          </div> */}
 
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
             <p className="text-xs uppercase tracking-wider text-slate-500 font-medium">Working Time</p>
             <h3 className="text-3xl font-bold mt-3">
-              {formatDuration(workingTime)}
+              {formatDuration(summary.total_working_time)}
             </h3>
           </div>
 
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
             <p className="text-xs uppercase tracking-wider text-slate-500 font-medium">Active Time</p>
-            <h3 className="text-3xl font-bold mt-3">{formatDuration(activeTime)}</h3>
+            <h3 className="text-3xl font-bold mt-3">{formatDuration(summary.active_time)}</h3>
           </div>
 
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
             <p className="text-xs uppercase tracking-wider text-slate-500 font-medium">Idle Time</p>
-            <h3 className="text-3xl font-bold mt-3">{formatDuration(idleTime)}</h3>
+            <h3 className="text-3xl font-bold mt-3">{formatDuration(summary.idle_time)}</h3>
           </div>
 
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
             <p className="text-xs uppercase tracking-wider text-slate-500 font-medium">Offline Time</p>
             <h3 className="text-3xl font-bold mt-3">
-              {formatDuration(offlineTime)}
+              {formatDuration(Math.max(OFFLINE_TIME, 0))}
             </h3>
           </div>
 
@@ -242,24 +235,11 @@ const EmployeeDetail = () => {
 
             <div className="space-y-3 max-h-[250px] overflow-auto">
               {loginHistory.map((l, i) => (
-                <div
-                  key={i}
-                  className="flex justify-between items-center bg-slate-50 hover:bg-indigo-50 transition-all p-4 rounded-2xl"
-                >
+                <div key={i} className="flex justify-between items-center bg-slate-50 hover:bg-indigo-50 transition-all p-4 rounded-2xl">
                   <span>{formatTime(l.login_time)}</span>
-
-                  <span className="text-slate-500">
-                    →
-                    {l.logout_time ? formatTime(l.logout_time) : " Running"}
-                  </span>
-
-                  <span
-                    className={`font-semibold ${l.logout_time ? "text-indigo-600" : "text-green-600"
-                      }`}
-                  >
-                    {l.logout_time
-                      ? formatDuration(l.total_duration)
-                      : "Running"}
+                  <span className="text-slate-500">→ {formatTime(l.logout_time)}</span>
+                  <span className="text-indigo-600 font-semibold">
+                    {formatDuration(l.total_duration)}
                   </span>
                 </div>
               ))}
@@ -273,7 +253,7 @@ const EmployeeDetail = () => {
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={appChart}>
                 <CartesianGrid />
-                <XAxis dataKey="name" tickFormatter={(value) => shortenAppName(value)} />
+                <XAxis dataKey="name" tickFormatter={(value) => shortenAppName(value)}/>
                 <YAxis />
                 <Tooltip formatter={(v) => formatDuration(v)} />
                 <Bar dataKey="usage" fill="#6366f1" />

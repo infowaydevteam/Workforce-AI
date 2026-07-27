@@ -1,11 +1,13 @@
 const express = require("express");
 const { verifyAgent } = require("../controller/agentController");
+const { getAgentConfig } = require("../controller/adminWorkflowController");
 const path = require("path");
 const router = express.Router();
 const fs = require("fs");
 
 
 router.post("/verify", verifyAgent);
+router.get("/config", getAgentConfig);
 
 router.get("/download-agent/:token", async (req, res) => {
   try {

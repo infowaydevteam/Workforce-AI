@@ -3,20 +3,25 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 
 public class ApiService
 {
     static HttpClient client = new HttpClient();
 
-    public static async Task SendActivity(string app, DateTime start, DateTime end)
+    public static async Task SendActivity(
+        string app,
+        DateTime start,
+        DateTime end,
+        string productivityCategory = "neutral"
+    )
     {
         var data = new
         {
             user_id = UserContext.UserId,
             app_name = app,
             start_time = start,
-            end_time = end
+            end_time = end,
+            productivity_category = productivityCategory
         };
 
         var json = JsonSerializer.Serialize(data);
@@ -37,11 +42,8 @@ public class ApiService
 
    public static async Task EndSession()
 {
-            Console.WriteLine("=========== END SESSION CALLED ===========");
-Console.WriteLine(Environment.StackTrace);
     try
     {
-
         var data = new {user_id = UserContext.UserId};
 
         var json = JsonSerializer.Serialize(data);
@@ -127,12 +129,11 @@ public static async Task<int> VerifyAgentFromConfig()
     return userId.GetInt32();
 }
 
-    public static async Task SendIdle(string appName,DateTime start, DateTime end)
+    public static async Task SendIdle(DateTime start, DateTime end)
     {
         var data = new
         {
             user_id = UserContext.UserId,
-             app_name = appName,
             start_time = start,
             end_time = end
         };
@@ -182,40 +183,6 @@ public static async Task UpdateStatus(string status)
         Console.WriteLine(
             $"UpdateStatus Error: {ex.Message}"
         );
-    }
-}
-
-
-public static async Task SendIdleAlert(int userId, double idleDuration)
-{
-    try
-    {
-        var data = new
-        {
-            userId = userId,
-            idleDuration = Math.Max(3600, (int)Math.Ceiling(idleDuration))
-        };
-
-        var json = JsonSerializer.Serialize(data);
-
-        var content = new StringContent(
-            json,
-            Encoding.UTF8,
-            "application/json"
-        );
-
-        var response = await client.PostAsync(
-            $"{ConfigService.GetApiBaseUrl()}/api/alerts/idle",
-            content
-        );
-
-        var result = await response.Content.ReadAsStringAsync();
-
-        Console.WriteLine($"Idle Alert Response: {result}");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Idle Alert Error: {ex.Message}");
     }
 }
 
@@ -304,88 +271,40 @@ public static async Task<RestrictedItemsResponse?> GetRestrictedItems()
     }
 }
 
-public static async Task SendHeartbeat()
+public static async Task<AgentPolicyConfig?> GetAgentPolicyConfig()
 {
     try
     {
-        var url =
-            $"{ConfigService.GetApiBaseUrl()}/api/heartbeat";
+        var token = ConfigService.GetToken();
 
-        var payload = new
-        {
-            agent_token = ConfigService.GetToken()
-        };
-
-        var json = JsonSerializer.Serialize(payload);
-
-        var content = new StringContent(
-            json,
-            Encoding.UTF8,
-            "application/json"
-        );
-
-        var response = await client.PostAsync(url, content);
-
-        Console.WriteLine($"Heartbeat Status : {response.StatusCode}");
-
-        var body = await response.Content.ReadAsStringAsync();
-
-        Console.WriteLine(body);
-    }
-    catch(Exception ex)
-    {
-        Console.WriteLine($"Heartbeat Error : {ex}");
-    }
-}
-
-public static async Task GetTrackedWebsites()
-{
-    try
-    {
-        Console.WriteLine("Loading Tracked Websites...");
-
-        var response = await client.GetAsync(
-    $"{ConfigService.GetApiBaseUrl()}/api/websites"
-);
+        var response =
+            await client.GetAsync(
+                $"{ConfigService.GetApiBaseUrl()}/api/agent/config?agent_token={Uri.EscapeDataString(token)}"
+            );
 
         if (!response.IsSuccessStatusCode)
-{
-    Console.WriteLine("Unable to load tracked websites.");
-    TrackedWebsiteService.SetWebsites(new List<string>());
-    return;
-}
-
-        var json = await response.Content.ReadAsStringAsync();
-
-        var result = JsonSerializer.Deserialize<TrackedWebsiteResponse>(
-            json,
-            new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-
-        if (result != null && result.Success)
         {
-            TrackedWebsiteService.SetWebsites(result.Websites);
-
-            Console.WriteLine(
-                $"Loaded {result.Websites.Count} tracked websites."
-            );
+            Console.WriteLine("Failed to fetch agent policy config.");
+            return null;
         }
+
+        var json =
+            await response.Content.ReadAsStringAsync();
+
+        Console.WriteLine($"Agent Policy Response: {json}");
+
+        return JsonSerializer.Deserialize<AgentPolicyConfig>(
+            json
+        );
     }
     catch (Exception ex)
-{
-    Console.WriteLine($"Tracked Website Error : {ex.Message}");
+    {
+        Console.WriteLine(
+            $"Agent Policy Error: {ex.Message}"
+        );
 
-    TrackedWebsiteService.SetWebsites(new List<string>());
-}
-}
-
-public class TrackedWebsiteResponse
-{
-    public bool Success { get; set; }
-
-    public List<string> Websites { get; set; } = new();
+        return null;
+    }
 }
 
 }

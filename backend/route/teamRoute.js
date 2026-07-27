@@ -1,12 +1,13 @@
 const express = require("express");
-const { getTeams, addTeam, deleteTeam } = require("../controller/teamController");
+const { getTeams, addTeam, updateTeam, deleteTeam } = require("../controller/teamController");
 const { authorizeRole, verifyToken } = require("../middleware/authMiddleware");
 const router = express.Router();
+
 
 router.get(
   "/",
   verifyToken,
-  authorizeRole("superadmin", "admin"),
+  authorizeRole("admin"),
   getTeams
 );
 
@@ -14,15 +15,22 @@ router.get(
 router.post(
   "/",
   verifyToken,
-  authorizeRole("superadmin","admin"),
+  authorizeRole("admin"),
   addTeam
+);
+
+router.put(
+  "/:id",
+  verifyToken,
+  authorizeRole("admin"),
+  updateTeam
 );
 
 // Delete Team
 router.delete(
   "/:id",
   verifyToken,
-  authorizeRole("superadmin","admin"),
+  authorizeRole("admin"),
   deleteTeam
 );
 
