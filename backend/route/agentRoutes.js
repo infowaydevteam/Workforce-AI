@@ -24,44 +24,45 @@ router.get("/download-agent/:token", async (req, res) => {
   }
 });
 
-// ── macOS DMG download — injects agent_token + api_base_url into config ──
+// ── macOS download — choose architecture and inject activation config ─────
 router.get("/download-mac/:token", async (req, res) => {
   try {
     const { token } = req.params;
+    const arch = req.query.arch === "x64" ? "x64" : "arm64";
 
-    console.log("Mac Agent Download Request:", token);
+    console.log("Mac Agent Download Request:", token, arch);
 
-    const dmgPath = path.resolve(__dirname, "..", "files", "IWF-Agent-mac.dmg");
-    const zipPath = path.resolve(__dirname, "..", "files", "IWF-Agent-mac.zip");
+    const packageName = `IWF-Agent-mac-${arch}.zip`;
+    let zipPath = path.resolve(__dirname, "..", "files", packageName);
 
-    // Prefer the DMG; fall back to zip if DMG not yet built
-    if (fs.existsSync(dmgPath)) {
-      return res.download(dmgPath, "IWF-Agent-mac.dmg");
+    // Backward-compatible fallback for the original Apple Silicon package.
+    if (!fs.existsSync(zipPath) && arch === "arm64") {
+      zipPath = path.resolve(__dirname, "..", "files", "IWF-Agent-mac.zip");
     }
-
     if (!fs.existsSync(zipPath)) {
-      return res.status(404).json({ success: false, message: "Mac agent package not found" });
+      return res.status(404).json({
+        success: false,
+        message: `Mac ${arch} agent package not found`,
+      });
     }
 
-    // Inject the token and server URL into config.json inside the zip
-    // so the employee doesn't have to type the server address manually.
     const apiBaseUrl = process.env.API_BASE_URL || `http://localhost:${process.env.PORT}`;
-
     const zip = new AdmZip(zipPath);
-
     const config = {
       agent_token: token,
       api_base_url: apiBaseUrl,
     };
 
-    // Replace config.json in the zip (path inside zip: mac/config.json)
     zip.updateFile("mac/config.json", Buffer.from(JSON.stringify(config, null, 2)));
 
-    const tmpPath = path.join(os.tmpdir(), `IWF-Agent-mac-${token.slice(0, 8)}.zip`);
+    const tmpPath = path.join(
+      os.tmpdir(),
+      `IWF-Agent-mac-${arch}-${token.slice(0, 8)}.zip`
+    );
     zip.writeZip(tmpPath);
 
-    res.download(tmpPath, "IWF-Agent-mac.zip", (err) => {
-      fs.unlink(tmpPath, () => {}); // clean up temp file after send
+    res.download(tmpPath, packageName, (err) => {
+      fs.unlink(tmpPath, () => {});
       if (err) console.error("Download error:", err.message);
     });
 

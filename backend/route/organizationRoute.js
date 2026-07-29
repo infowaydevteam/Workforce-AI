@@ -7,21 +7,21 @@ const router = express.Router();
 router.get(
   "/",
   verifyToken,
-  authorizeRole("admin"),
+  authorizeRole("superadmin","admin"),
   getOrganizations
 );
 
 router.post(
   "/",
   verifyToken,
-  authorizeRole("admin"),
+  authorizeRole("superadmin","admin"),
   addOrganization
 );
 
 router.delete(
   "/:id",
   verifyToken,
-  authorizeRole("admin"),
+  authorizeRole("superadmin","admin"),
   deleteOrganization
 );
 

@@ -99,10 +99,11 @@ your administrator to confirm the package source before continuing.
 The downloadable macOS package is self-contained: employees do **not** need a
 .NET SDK. Choose the package that matches the Mac:
 
-- Apple Silicon (M1/M2/M3/M4): `osx-arm64`
-- Intel Mac: `osx-x64`
+- Apple Silicon (M1/M2/M3/M4): `IWF-Agent-mac-arm64.zip`
+- Intel Mac: `IWF-Agent-mac-x64.zip`
 
-1. Download and open `IWF-Agent-mac.dmg` (or extract `IWF-Agent-mac.zip`).
+1. Open the employee download page and select the package matching the Mac,
+   then extract the ZIP.
 2. Move `IWF-Agent` and its `config.json` to a permanent folder, such as
    `~/Applications/IWF-Agent`. Keep both files in the same folder.
 3. In Terminal, make the binary executable and launch it:
@@ -144,7 +145,11 @@ server, stop it, update `api_base_url`, and launch it again.
 
 - The agent checks activity every 5 seconds and sends active periods in
   30-second chunks.
+- It sends a heartbeat every 10 seconds so disconnected agents can be marked
+  offline and their open sessions can be closed.
 - It records an idle period after 5 seconds without input.
+- It loads the tracked-website list from the backend and uses matching browser
+  window titles in activity reports.
 - It does not start or continue monitoring on Saturday or Sunday.
 - On macOS, activity cannot be collected until Accessibility permission is
   granted.
@@ -168,5 +173,6 @@ code with your administrator.
 | Continuous activity | POST `/api/activity/log` | Every 30 sec |
 | Idle periods | POST `/api/idle/log` | On idle start/end |
 | Online/Idle/Offline status | POST `/api/employee/status` | On state change |
+| Agent heartbeat | POST `/api/heartbeat` | Every 10 sec |
 | Session start/end | POST `/api/session/start` and `/api/session/end` | On agent launch/quit |
 | Restricted app/site alert | Email to manager after 12 sec of continuous use | Per violation |

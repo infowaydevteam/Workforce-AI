@@ -1,27 +1,11 @@
-import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { API_BASE_URL } from "../../../config";
 
 const Download = () => {
   const { token } = useParams();
-  const [status, setStatus] = useState("starting");
 
-  useEffect(() => {
-    if (!token) {
-      setStatus("error");
-      return;
-    }
-
-    // Trigger download via a hidden anchor — works around Gmail's HTTP link blocking
-    const url = `${API_BASE_URL}/api/agent/download-mac/${token}`;
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "IWF-Agent-mac.dmg";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setStatus("downloading");
-  }, [token]);
+  const downloadUrl = (arch) =>
+    `${API_BASE_URL}/api/agent/download-mac/${token}?arch=${arch}`;
 
   return (
     <div style={{
@@ -51,28 +35,37 @@ const Download = () => {
 
         <h1 style={{ color: "#111827", marginBottom: 8 }}>IWF Agent</h1>
 
-        {status === "downloading" && (
+        {token ? (
           <>
-            <p style={{ color: "#4f46e5", fontWeight: "bold", fontSize: 18 }}>
-              ✅ Your download has started!
+            <p style={{ color: "#374151", fontSize: 18 }}>
+              Choose the package that matches your Mac:
             </p>
-            <p style={{ color: "#6b7280", marginTop: 8 }}>
-              Open the <strong>.dmg</strong> file once it finishes downloading,
-              then run <strong>IWF-Agent</strong> and enter your activation code.
-            </p>
-            <p style={{ color: "#9ca3af", fontSize: 13, marginTop: 24 }}>
-              If the download didn't start,{" "}
+            <div style={{ display: "grid", gap: 12, marginTop: 24 }}>
               <a
-                href={`${API_BASE_URL}/api/agent/download-mac/${token}`}
-                style={{ color: "#4f46e5" }}
+                href={downloadUrl("arm64")}
+                style={{
+                  color: "white", background: "#4f46e5", padding: 14,
+                  borderRadius: 8, textDecoration: "none", fontWeight: "bold",
+                }}
               >
-                click here
-              </a>.
+                Apple Silicon (M1–M4)
+              </a>
+              <a
+                href={downloadUrl("x64")}
+                style={{
+                  color: "#4f46e5", border: "1px solid #4f46e5", padding: 14,
+                  borderRadius: 8, textDecoration: "none", fontWeight: "bold",
+                }}
+              >
+                Intel Mac
+              </a>
+            </div>
+            <p style={{ color: "#6b7280", marginTop: 24 }}>
+              Extract the ZIP, then run <strong>IWF-Agent</strong>. Your
+              activation code and server address are included automatically.
             </p>
           </>
-        )}
-
-        {status === "error" && (
+        ) : (
           <p style={{ color: "#dc2626" }}>
             Invalid download link. Please contact your administrator.
           </p>

@@ -1,73 +1,198 @@
 const pool = require("../db");
 
 // Get All Users
+
 const getUsers = async (req, res) => {
   try {
-    const result = await pool.query(`
-     SELECT 
-  users.id,
-  users.name,
-  users.email,
-  users.role,
-  users.status,
-  organizations.name AS organization_name,
-  teams.name AS team_name
-FROM users
-LEFT JOIN organizations
-  ON users.organization_id = organizations.id
-LEFT JOIN teams
-  ON users.team_id = teams.id
-WHERE users.role != 'admin'
-ORDER BY users.id DESC
-    `);
+    let result;
+
+    if (req.user.role === "superadmin") {
+      result = await pool.query(`
+        SELECT
+          users.id,
+          users.name,
+          users.email,
+          users.role,
+          users.status,
+          organizations.name AS organization_name,
+          teams.name AS team_name
+        FROM users
+        LEFT JOIN organizations
+          ON users.organization_id = organizations.id
+        LEFT JOIN teams
+          ON users.team_id = teams.id
+        WHERE users.role != 'superadmin'
+        ORDER BY users.id DESC
+      `);
+
+    } else if (req.user.role === "admin") {
+
+      result = await pool.query(
+        `
+        SELECT
+          users.id,
+          users.name,
+          users.email,
+          users.role,
+          users.status,
+          organizations.name AS organization_name,
+          teams.name AS team_name
+        FROM users
+        LEFT JOIN organizations
+          ON users.organization_id = organizations.id
+        LEFT JOIN teams
+          ON users.team_id = teams.id
+        WHERE users.organization_id = $1
+          AND users.role NOT IN ('superadmin', 'admin')
+        ORDER BY users.id DESC
+        `,
+        [req.user.organization_id]
+      );
+
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
 
     res.status(200).json(result.rows);
+
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Failed to fetch users" });
+
+    res.status(500).json({
+      message: "Failed to fetch users",
+    });
   }
 };
 
 // Delete User
 const deleteUser = async (req, res) => {
+  const client = await pool.connect();
+
   try {
     const { id } = req.params;
 
-    await pool.query(
+    await client.query("BEGIN");
+
+    // Restricted Alerts
+    await client.query(
+      "DELETE FROM restricted_alerts WHERE employee_id = $1",
+      [id]
+    );
+
+    // Activity Logs
+    await client.query(
+      "DELETE FROM activity_logs WHERE user_id = $1",
+      [id]
+    );
+
+    // Idle Logs
+    await client.query(
+      "DELETE FROM idle_logs WHERE user_id = $1",
+      [id]
+    );
+
+    // Sessions
+    await client.query(
+      "DELETE FROM sessions WHERE user_id = $1",
+      [id]
+    );
+
+    await client.query(
       "DELETE FROM users WHERE id = $1",
       [id]
     );
 
-    res.status(200).json({
-      message: "User deleted successfully",
+    await client.query("COMMIT");
+
+    res.json({
+      success: true,
+      message: "User deleted successfully"
     });
+
   } catch (error) {
-    console.error("DELETE USER ERROR:", error);
+
+    await client.query("ROLLBACK");
+
+    console.error(error);
 
     res.status(500).json({
       success: false,
       message: error.message
     });
+
+  } finally {
+    client.release();
   }
 };
+
+// const updateStatus = async (req, res) => {
+//   try {
+//     const { user_id, status } = req.body;
+//     console.log("STATUS REQUEST:", req.body);
+
+//     const formattedStatus =
+//       status.charAt(0).toUpperCase() +
+//       status.slice(1).toLowerCase();
+
+//     const result = await pool.query(
+//       `UPDATE users
+//        SET status = $1,
+//            last_active = NOW()
+//        WHERE id = $2
+//        RETURNING *`,
+//       [formattedStatus, user_id]
+//     );
+
+//     res.json({
+//       success: true,
+//       data: result.rows[0],
+//     });
+//   } catch (err) {
+//     res.status(500).json({
+//       success: false,
+//       error: err.message,
+//     });
+//   }
+// };
+
+
+
+
+// controller
 
 const updateStatus = async (req, res) => {
   try {
     const { user_id, status } = req.body;
+
     console.log("STATUS REQUEST:", req.body);
 
     const formattedStatus =
       status.charAt(0).toUpperCase() +
       status.slice(1).toLowerCase();
 
-    const result = await pool.query(
-      `UPDATE users
-       SET status = $1,
-           last_active = NOW()
-       WHERE id = $2
-       RETURNING *`,
-      [formattedStatus, user_id]
-    );
+    let result;
+
+    if (formattedStatus === "Online") {
+      result = await pool.query(
+        `UPDATE users
+         SET status = $1,
+             last_active = NOW()
+         WHERE id = $2
+         RETURNING *`,
+        [formattedStatus, user_id]
+      );
+    } else {
+      result = await pool.query(
+        `UPDATE users
+         SET status = $1
+         WHERE id = $2
+         RETURNING *`,
+        [formattedStatus, user_id]
+      );
+    }
 
     res.json({
       success: true,
@@ -81,7 +206,8 @@ const updateStatus = async (req, res) => {
   }
 };
 
-// controller
+
+
 const getEmployeeById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -180,43 +306,76 @@ const getActivitySummary = async (req, res) => {
 
     let sessionFilter = `WHERE user_id = $1`;
     let idleFilter = `WHERE user_id = $1`;
+    let activityFilter = `WHERE user_id = $1`;
 
     const params = [id];
 
     if (date) {
       sessionFilter += ` AND DATE(login_time) = $2`;
       idleFilter += ` AND DATE(start_time) = $2`;
+      activityFilter += ` AND DATE(start_time) = $2`;
+
       params.push(date);
     }
 
-    const session = await pool.query(`
-      SELECT 
-        SUM(total_duration) AS total_working_time,
-        COUNT(*) AS total_sessions
-      FROM sessions
-      ${sessionFilter}
-    `, params);
+    // Working Time (Completed + Running Sessions)
+    const session = await pool.query(
+  `
+  SELECT
+    COUNT(*) AS total_sessions,
 
-    const idle = await pool.query(`
-      SELECT SUM(duration) AS idle_time
+    COALESCE(
+      SUM(
+        CASE
+          WHEN logout_time IS NULL
+          THEN EXTRACT(EPOCH FROM (NOW() - login_time))
+          ELSE total_duration
+        END
+      ),
+      0
+    ) AS total_working_time
+
+  FROM sessions
+  ${sessionFilter}
+  `,
+  params
+);
+
+    // Idle Time
+    const idle = await pool.query(
+      `
+      SELECT
+        COALESCE(SUM(duration),0) AS idle_time
       FROM idle_logs
       ${idleFilter}
-    `, params);
+      `,
+      params
+    );
 
-    const active = await pool.query(`
-      SELECT SUM(duration) AS active_time
+    // Active Time
+    const active = await pool.query(
+      `
+      SELECT
+        COALESCE(SUM(duration),0) AS active_time
       FROM activity_logs
-      ${idleFilter}
-    `, params);
+      ${activityFilter}
+      `,
+      params
+    );
 
     res.json({
-      total_sessions: session.rows[0].total_sessions || 0,
-      total_working_time: session.rows[0].total_working_time || 0,
-      active_time: active.rows[0].active_time || 0,
-      idle_time: idle.rows[0].idle_time || 0,
+      total_sessions: Number(session.rows[0].total_sessions),
+      total_working_time: Number(session.rows[0].total_working_time),
+      active_time: Number(active.rows[0].active_time),
+      idle_time: Number(idle.rows[0].idle_time),
     });
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.log(err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };
 
@@ -270,9 +429,7 @@ const getUserFullReport = async (req, res) => {
     let activityFilter = "";
     let idleFilter = "";
 
-    // =====================
-    // DATE FILTER
-    // =====================
+
     if (from && to) {
       params.push(from, to);
 
@@ -281,9 +438,7 @@ const getUserFullReport = async (req, res) => {
       idleFilter = `AND DATE(start_time) BETWEEN $2 AND $3`;
     }
 
-    // =====================
-    // USER
-    // =====================
+
     const user = await pool.query(
       `
       SELECT id, name, email, role, last_active
@@ -293,9 +448,7 @@ const getUserFullReport = async (req, res) => {
       [id]
     );
 
-    // =====================
-    // SESSIONS (LIMITED)
-    // =====================
+
     const sessions = await pool.query(
       `
       SELECT id, login_time, logout_time, total_duration
@@ -308,9 +461,7 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-    // =====================
-    // ACTIVITY LOGS (LIMITED)
-    // =====================
+
     const activityLogs = await pool.query(
       `
       SELECT app_name, start_time, end_time, duration
@@ -323,9 +474,7 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-    // =====================
-    // IDLE LOGS
-    // =====================
+
     const idleLogs = await pool.query(
       `
       SELECT start_time, end_time, duration
@@ -338,9 +487,7 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-    // =====================
-    // SUMMARY
-    // =====================
+
     const summary = await pool.query(
       `
       SELECT COALESCE(SUM(total_duration),0) AS total_working_time
@@ -371,9 +518,7 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-    // =====================
-    // APP USAGE
-    // =====================
+
     const appUsage = await pool.query(
       `
       SELECT app_name, SUM(duration) AS total_duration
@@ -386,9 +531,7 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-    // =====================
-    // WEEKLY SUMMARY (NEW FIX)
-    // =====================
+
     const weeklySummary = await pool.query(
       `
       SELECT
@@ -403,9 +546,7 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-    // =====================
-    // RESPONSE (CLEAN STRUCTURE)
-    // =====================
+
     return res.json({
       user: user.rows[0],
 

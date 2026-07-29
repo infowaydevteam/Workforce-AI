@@ -1,9 +1,11 @@
 const pool = require("../db");
-const { sendRestrictedWebsiteAlert } = require("../middleware/emailService");
+const { sendRestrictedWebsiteAlert, sendIdleAlertEmail } = require("../middleware/emailService");
+const alertService = require("../services/alertService");
 
 const sendRestrictedAlert = async (req, res) => {
     try {
         console.log(req.body);
+
         const { userId, website, duration } = req.body;
 
         if (userId == null || !website || duration == null) {
@@ -12,10 +14,6 @@ const sendRestrictedAlert = async (req, res) => {
                 message: "Missing required fields",
             });
         }
-
-        // ==========================
-        // Employee Details
-        // ==========================
 
         const employeeResult = await pool.query(
             `SELECT id, name, email, organization_id, team_id
@@ -86,10 +84,6 @@ const sendRestrictedAlert = async (req, res) => {
             });
         }
 
-        // ==========================
-        // Save Alert History
-        // ==========================
-
         const alertResult = await pool.query(
             `INSERT INTO restricted_alerts
              (employee_id, manager_id, website, duration, status)
@@ -109,7 +103,6 @@ const sendRestrictedAlert = async (req, res) => {
         // ==========================
         // Send Emails
         // ==========================
-
         try {
             const recipients = [];
 
@@ -178,6 +171,145 @@ const sendRestrictedAlert = async (req, res) => {
     }
 };
 
+// const sendIdleAlert = async (req, res) => {
+
+//     try {
+
+//         const { userId, idleDuration } = req.body;
+
+//         if (!userId || idleDuration == null) {
+
+//             return res.status(400).json({
+
+//                 success: false,
+
+//                 message: "userId and idleDuration are required."
+
+//             });
+
+//         }
+
+//         const result = await alertService.createIdleAlert(
+//             userId,
+//             idleDuration
+//         );
+
+//         return res.status(200).json(result);
+
+//     }
+//     catch (err) {
+
+//         console.error("Idle Alert Error:", err);
+
+//         return res.status(500).json({
+
+//             success: false,
+
+//             message: err.message
+
+//         });
+
+//     }
+
+// };
+
+const sendIdleAlert = async (req, res) => {
+
+    try {
+
+        const { userId, idleDuration } = req.body;
+
+        if (!userId || idleDuration == null) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message: "userId and idleDuration are required."
+
+            });
+
+        }
+
+        const result = await alertService.createIdleAlert(
+            userId,
+            idleDuration
+        );
+
+        if (result.success && result.message !== "Idle alert already exists.") {
+
+            const employee = await pool.query(
+                `
+                SELECT
+                    e.name AS employee_name,
+                    e.email AS employee_email,
+                    s.name AS manager_name,
+                    s.email AS manager_email
+
+                FROM users e
+
+                JOIN users s
+                    ON s.role = 'superadmin'
+
+                WHERE e.id = $1
+                `,
+                [userId]
+            );
+
+            if (employee.rows.length > 0) {
+
+                for (const data of employee.rows) {
+
+                    await sendIdleAlertEmail({
+
+                        managerEmail: data.manager_email,
+
+                        managerName: data.manager_name,
+
+                        employeeName: data.employee_name,
+
+                        duration: idleDuration
+
+                    });
+
+                }
+
+
+                await pool.query(
+                    `
+                    UPDATE alerts
+                    SET is_read = true
+                    WHERE user_id = $1
+                      AND alert_type = 'IDLE'
+                      AND is_read = false
+                    `,
+                    [userId]
+                );
+
+            }
+
+        }
+
+        return res.status(200).json(result);
+
+    }
+    catch (err) {
+
+        console.error("Idle Alert Error:", err);
+
+        return res.status(500).json({
+
+            success: false,
+
+            message: err.message
+
+        });
+
+    }
+
+};
+
 module.exports = {
     sendRestrictedAlert,
+    sendIdleAlert
 };

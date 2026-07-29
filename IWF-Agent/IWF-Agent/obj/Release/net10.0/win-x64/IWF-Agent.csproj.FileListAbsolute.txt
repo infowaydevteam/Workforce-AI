@@ -609,3 +609,5 @@ D:\IWF\IWF-Agent\IWF-Agent\obj\Release\net10.0\win-x64\refint\IWF-Agent.dll
 D:\IWF\IWF-Agent\IWF-Agent\obj\Release\net10.0\win-x64\IWF-Agent.pdb
 D:\IWF\IWF-Agent\IWF-Agent\obj\Release\net10.0\win-x64\IWF-Agent.genruntimeconfig.cache
 D:\IWF\IWF-Agent\IWF-Agent\obj\Release\net10.0\win-x64\ref\IWF-Agent.dll
+D:\IWF\IWF-Agent\IWF-Agent\bin\Release\net10.0\win-x64\Microsoft.Win32.SystemEvents.dll
+D:\IWF\IWF-Agent\IWF-Agent\obj\Release\net10.0\win-x64\IWF-Agent.csproj.AssemblyReference.cache

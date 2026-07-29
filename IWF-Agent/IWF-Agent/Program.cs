@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -15,10 +16,6 @@ class Program
                 Console.WriteLine("Weekend detected. Monitoring is disabled.");
                 return;
             }
-
-            // ==========================
-            // Activation Flow
-            // ==========================
 
             if (!ConfigService.IsActivated())
             {
@@ -51,15 +48,8 @@ class Program
 
             StartupService.Register();
 
-            // ==========================
-            // Start Session
-            // ==========================
-
             await ApiService.StartSession();
-
-            // ==========================
-            // Load Restricted Items
-            // ==========================
+            Console.WriteLine("START SESSION API CALL");
 
             var restrictedItems = await ApiService.GetRestrictedItems();
 
@@ -73,13 +63,37 @@ class Program
                 Console.WriteLine("Failed to load restricted items.");
             }
 
-            // ==========================
-            // Start Monitoring
-            // ==========================
+            await ApiService.GetTrackedWebsites();
 
             Console.WriteLine("Monitoring started. Press Ctrl+C to stop.");
-
             ActivityService.Start();
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                LockService.Start();
+
+            // HEARTBEAT
+            _ = Task.Run(async () =>
+            {
+                while (true)
+                {
+                    try
+                    {
+                        await ApiService.SendHeartbeat();
+
+                        Console.WriteLine(
+                            $"Heartbeat Sent : {DateTime.Now}"
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(
+                            $"Heartbeat Error : {ex.Message}"
+                        );
+                    }
+
+                    await Task.Delay(10000);
+                }
+            });
 
             await Task.Delay(Timeout.Infinite);
         }
@@ -89,7 +103,15 @@ class Program
         }
         finally
         {
+            Console.WriteLine(
+                "Stopping Activity Service..."
+            );
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                LockService.Stop();
+
             await ActivityService.Stop();
+
         }
     }
 

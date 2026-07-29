@@ -9,6 +9,7 @@
     ".NETCoreApp,Version=v10.0/win-x64": {
       "IWF-Agent/1.0.0": {
         "dependencies": {
+          "Microsoft.Win32.SystemEvents": "10.0.10",
           "runtimepack.Microsoft.NETCore.App.Runtime.win-x64": "10.0.8"
         },
         "runtime": {
@@ -753,6 +754,14 @@
             "fileVersion": "2.4.18.0"
           }
         }
+      },
+      "Microsoft.Win32.SystemEvents/10.0.10": {
+        "runtime": {
+          "runtimes/win/lib/net10.0/Microsoft.Win32.SystemEvents.dll": {
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.1026.32716"
+          }
+        }
       }
     }
   },
@@ -766,6 +775,13 @@
       "type": "runtimepack",
       "serviceable": false,
       "sha512": ""
+    },
+    "Microsoft.Win32.SystemEvents/10.0.10": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-IY0lTfC2uVwTizjtGgQ03ViwyXGQ9lMDblzB889/HyguAZJ2J8pRrjPown8h2eJe8WFc8nh+BUEsEPkshzizYQ==",
+      "path": "microsoft.win32.systemevents/10.0.10",
+      "hashPath": "microsoft.win32.systemevents.10.0.10.nupkg.sha512"
     }
   },
   "runtimes": {

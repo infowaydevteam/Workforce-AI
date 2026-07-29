@@ -1,18 +1,45 @@
 import React from "react";
 import Sidebar from "../components/sidebar/Sidebar";
 import {
-    LayoutDashboard,
-    Users,
-    Building2,
-    UsersRound,
-    FileText,
-    BarChart3,
-    Settings,
+  LayoutDashboard,
+  Users,
+  Building2,
+  UsersRound,
+  FileText,
+  BarChart3,
+  Settings,
 } from "lucide-react";
 import { Outlet, useNavigate } from "react-router-dom";
 
 const AdminLayout = () => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+
+  const role = localStorage.getItem("role");
+
+  const managementItems = [];
+
+  // Sirf Super Admin
+  if (role === "superadmin") {
+    managementItems.push({
+      name: "Organizations",
+      icon: <Building2 size={20} />,
+      action: () => navigate("/admin/organizations"),
+    },
+      {
+        name: "Teams",
+        icon: <UsersRound size={20} />,
+        action: () => navigate("/admin/teams"),
+      }
+    );
+  }
+
+  managementItems.push(
+    {
+      name: "Employees",
+      icon: <Users size={20} />,
+      action: () => navigate("/admin/employee"),
+    }
+  );
 
   const menuItems = [
     {
@@ -25,28 +52,10 @@ const AdminLayout = () => {
         },
       ],
     },
-
     {
       label: "MANAGEMENT",
-      items: [
-        {
-          name: "Organizations",
-          icon: <Building2 size={20} />,
-          action: () => navigate("/admin/organizations"),
-        },
-        {
-          name: "Teams",
-          icon: <UsersRound size={20} />,
-          action: () => navigate("/admin/teams"),
-        },
-        {
-          name: "Employees",
-          icon: <Users size={20} />,
-          action: () => navigate("/admin/employee"),
-        },
-      ],
+      items: managementItems,
     },
-
     {
       label: "ANALYTICS",
       items: [
@@ -55,38 +64,22 @@ const AdminLayout = () => {
           icon: <FileText size={20} />,
           action: () => navigate("/admin/reports"),
         },
-        // {
-        //   name: "Productivity",
-        //   icon: <BarChart3 size={20} />,
-        //   action: () => navigate("/admin/productivity"),
-        // },
       ],
     },
-
-    // {
-    //   label: "SETTINGS",
-    //   items: [
-    //     {
-    //       name: "Settings",
-    //       icon: <Settings size={20} />,
-    //       action: () => navigate("/admin/settings"),
-    //     },
-    //   ],
-    // },
   ];
 
-    return (
-        <div className="min-h-screen bg-slate-50">
-            <Sidebar
-                title="Admin Panel"
-                menuItems={menuItems}
-            />
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <Sidebar
+        title="Admin Panel"
+        menuItems={menuItems}
+      />
 
-            <div className="ml-64">
-                <Outlet />
-            </div>
-        </div>
-    );
+      <div className="ml-64">
+        <Outlet />
+      </div>
+    </div>
+  );
 };
 
 export default AdminLayout;

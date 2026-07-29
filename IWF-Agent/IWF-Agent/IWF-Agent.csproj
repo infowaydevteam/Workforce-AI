@@ -15,21 +15,37 @@
          Mac Intel: dotnet publish -r osx-x64              -->
     <RuntimeIdentifiers>win-x64;osx-arm64;osx-x64</RuntimeIdentifiers>
     <SelfContained>true</SelfContained>
+
     <PublishSingleFile>true</PublishSingleFile>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <PublishTrimmed>false</PublishTrimmed>
+
   </PropertyGroup>
 
+
   <ItemGroup>
+
+    <PackageReference Include="Microsoft.Win32.SystemEvents" Version="10.0.10" />
     <PackageReference Include="System.Net.Http.Json" Version="10.0.8" />
   </ItemGroup>
 
+  <!-- These Windows Forms helpers are not used by the current agent and
+       cannot be compiled for the cross-platform macOS target. -->
   <ItemGroup>
+    <Compile Remove="Services/NativeMethods.cs" />
+    <Compile Remove="Services/SessionNotificationWindow.cs" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+
     <None Update="config.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>Always</CopyToPublishDirectory>
     </None>
+
   </ItemGroup>
+
 
 </Project>
