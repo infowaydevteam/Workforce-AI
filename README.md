@@ -1,6 +1,47 @@
 # IWF (Info Workforce)
 
----
+IWF is a workforce-management and activity-monitoring system with three parts:
+
+- a React/Vite administration dashboard;
+- a Node.js/Express API backed by PostgreSQL; and
+- a self-contained employee agent for Windows and macOS.
+
+The current `kevin_mac` branch combines the latest dashboard, reporting,
+heartbeat, offline-detection, idle-alert, and website-tracking features from
+`main` with native macOS window and idle-time monitoring.
+
+## Requirements
+
+- Node.js 20.19 or newer (Node.js 22 or 24 is recommended)
+- npm
+- PostgreSQL 17
+- .NET 10 SDK only when building the desktop agent from source
+
+Employees using a published agent do not need the .NET SDK.
+
+## Local Configuration
+
+Create `backend/.env` with the environment-specific values required by the
+API. Do not commit real passwords, email credentials, agent tokens, or JWT
+secrets.
+
+```dotenv
+PORT=5001
+DB_USER=YOUR_POSTGRES_USER
+DB_HOST=localhost
+DB_NAME=IWF_DB
+DB_PASSWORD=YOUR_POSTGRES_PASSWORD
+DB_PORT=5432
+JWT_SECRET=REPLACE_WITH_A_STRONG_SECRET
+API_BASE_URL=http://localhost:5001
+EMAIL_USER=YOUR_EMAIL_ACCOUNT
+EMAIL_PASS=YOUR_EMAIL_APP_PASSWORD
+```
+
+The database must already contain the application schema, including the
+`users`, `organizations`, `teams`, `sessions`, `activity_logs`, `idle_logs`,
+`restricted_items`, `restricted_alerts`, `alerts`, and `tracked_websites`
+tables. This repository does not currently include a migration runner.
 
 ## Admin Setup
 
@@ -22,6 +63,9 @@ npm install
 npm start
 ```
 
+The API listens on the `PORT` configured in `backend/.env`. Port `5001` is
+recommended on macOS because Control Center/AirPlay may reserve port `5000`.
+
 ### 3. Start Frontend
 
 ```bash
@@ -29,6 +73,9 @@ cd frontend
 npm install
 npm run dev
 ```
+
+Ensure `frontend/config.js` points to the same backend URL. The Vite development
+server normally starts at `http://localhost:5173`.
 
 ### 4. Login as Admin
 
@@ -126,6 +173,37 @@ Once activated, the agent checks Accessibility permission before collecting any
 activity. It registers a macOS LaunchAgent and starts automatically at your
 next login. The current launch continues running; a second copy is not started.
 
+### Build the macOS agents
+
+From `IWF-Agent/IWF-Agent`, publish a self-contained package for each supported
+Mac architecture:
+
+```bash
+dotnet publish IWF-Agent.csproj -c Release -r osx-arm64 \
+  --self-contained true -o publish/mac-arm64
+
+dotnet publish IWF-Agent.csproj -c Release -r osx-x64 \
+  --self-contained true -o publish/mac-x64
+```
+
+Each download ZIP must contain these paths so the backend can inject the
+employee's activation configuration:
+
+```text
+mac/IWF-Agent
+mac/config.json
+```
+
+Store the finished packages as:
+
+```text
+backend/files/IWF-Agent-mac-arm64.zip
+backend/files/IWF-Agent-mac-x64.zip
+```
+
+The employee download page requests `/api/agent/download-mac/:token` with an
+`arch=arm64` or `arch=x64` query parameter and downloads the matching package.
+
 ### Configuration and activation
 
 The agent stores its setup beside the executable in `config.json`:
@@ -148,6 +226,7 @@ server, stop it, update `api_base_url`, and launch it again.
 - It sends a heartbeat every 10 seconds so disconnected agents can be marked
   offline and their open sessions can be closed.
 - It records an idle period after 5 seconds without input.
+- After 60 continuous idle minutes, it submits an idle alert to the backend.
 - It loads the tracked-website list from the backend and uses matching browser
   window titles in activity reports.
 - It does not start or continue monitoring on Saturday or Sunday.
@@ -172,7 +251,12 @@ code with your administrator.
 | App switch logging | POST `/api/activity/log` | On each switch |
 | Continuous activity | POST `/api/activity/log` | Every 30 sec |
 | Idle periods | POST `/api/idle/log` | On idle start/end |
+| Extended-idle alert | POST `/api/alerts/idle` | After 60 continuous idle minutes |
 | Online/Idle/Offline status | POST `/api/employee/status` | On state change |
 | Agent heartbeat | POST `/api/heartbeat` | Every 10 sec |
 | Session start/end | POST `/api/session/start` and `/api/session/end` | On agent launch/quit |
 | Restricted app/site alert | Email to manager after 12 sec of continuous use | Per violation |
+
+The backend checks for stale heartbeats every 10 seconds. An employee with no
+heartbeat for more than 30 seconds is marked offline, and any open session is
+closed automatically.
