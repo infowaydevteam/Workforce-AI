@@ -43,7 +43,9 @@ const register = async (req, res) => {
       ]
     );
 
-    const downloadLink = `${process.env.API_BASE_URL}/api/agent/download-agent/${agentToken}`;
+    // Download Link — points to frontend download page (avoids Gmail HTTP block)
+    const frontendUrl = process.env.FRONTEND_URL || process.env.API_BASE_URL.replace(':5001', ':5173');
+    const downloadLink = `${frontendUrl}/download/${agentToken}`;
 
     await sendAgentEmail({
       email,

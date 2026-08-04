@@ -72,6 +72,12 @@ if (!string.IsNullOrEmpty(matchedWebsite))
     {
         try
         {
+            if (!WorkScheduleHelper.IsMonitoringAllowed(DateTime.Now))
+            {
+                timer?.Stop();
+                Console.WriteLine("Weekend detected. Monitoring stopped.");
+                return;
+            }
 
  // =====================
         // WINDOWS LOCK CHECK
@@ -353,7 +359,6 @@ public static async Task Stop()
         );
     }
 }
-
 public static void ResetIdle()
 {
     isIdle = false;

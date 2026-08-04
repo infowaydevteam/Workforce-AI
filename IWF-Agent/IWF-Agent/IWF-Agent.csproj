@@ -1,26 +1,24 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-
-    <TargetFramework>net10.0-windows</TargetFramework>
-
-    <UseWindowsForms>true</UseWindowsForms>
-
+    <!-- Exe on Windows, console app on macOS/Linux -->
+    <OutputType Condition="$([MSBuild]::IsOSPlatform('Windows'))">WinExe</OutputType>
+    <OutputType Condition="!$([MSBuild]::IsOSPlatform('Windows'))">Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>IWF_Agent</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
-
-    <!-- Publish Settings -->
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <!-- Publish Settings — override RuntimeIdentifier at publish time:
+         Windows : dotnet publish -r win-x64
+         Mac ARM : dotnet publish -r osx-arm64
+         Mac Intel: dotnet publish -r osx-x64              -->
+    <RuntimeIdentifiers>win-x64;osx-arm64;osx-x64</RuntimeIdentifiers>
     <SelfContained>true</SelfContained>
 
     <PublishSingleFile>true</PublishSingleFile>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-
-    <!-- Trim mat use karna -->
     <PublishTrimmed>false</PublishTrimmed>
 
   </PropertyGroup>
@@ -28,8 +26,15 @@
 
   <ItemGroup>
 
-  <PackageReference Include="Microsoft.Win32.SystemEvents" Version="10.0.10" />
-  <PackageReference Include="System.Net.Http.Json" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Win32.SystemEvents" Version="10.0.10" />
+    <PackageReference Include="System.Net.Http.Json" Version="10.0.8" />
+  </ItemGroup>
+
+  <!-- These Windows Forms helpers are not used by the current agent and
+       cannot be compiled for the cross-platform macOS target. -->
+  <ItemGroup>
+    <Compile Remove="Services/NativeMethods.cs" />
+    <Compile Remove="Services/SessionNotificationWindow.cs" />
   </ItemGroup>
 
 

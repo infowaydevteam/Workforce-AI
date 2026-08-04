@@ -1,6 +1,8 @@
 using Microsoft.Win32;
 using System;
+using System.Runtime.Versioning;
 
+[SupportedOSPlatform("windows")]
 public static class LockService
 {
     public static void Start()

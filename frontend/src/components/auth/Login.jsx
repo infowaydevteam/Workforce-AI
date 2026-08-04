@@ -49,17 +49,17 @@ const Login = () => {
 
       setSuccess("Login successful! Redirecting...");
 
-      // Redirect after 1 second
       setTimeout(() => {
-        setTimeout(() => {
-          if (
-            data.user.role === "superadmin" ||
-            data.user.role === "admin"
-          ) {
-            navigate("/admin");
-          }
-        }, 1000);
-
+        if (
+          data.user.role === "superadmin" ||
+          data.user.role === "admin"
+        ) {
+          navigate("/admin");
+        } else {
+          setSuccess("");
+          setError(`Role "${data.user.role}" does not have a portal yet. Please contact your admin.`);
+          localStorage.clear();
+        }
       }, 1000);
 
     } catch (err) {

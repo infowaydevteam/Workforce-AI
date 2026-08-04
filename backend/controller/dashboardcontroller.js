@@ -64,7 +64,7 @@ const getDashboardStats = async (req, res) => {
       values
     );
 
-  
+
 
     const idleUsers = await pool.query(
       `

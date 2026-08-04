@@ -776,7 +776,7 @@ const Reports = () => {
 
                         <span
                           className={`px-3 py-1 rounded-full text-sm font-semibold
-                      
+
                       ${productivity >= 80
                               ?
                               "bg-green-100 text-green-700"

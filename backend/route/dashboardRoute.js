@@ -29,7 +29,7 @@ router.get(
   authorizeRole("superadmin", "admin"),
   getOrganizationSummary
 );
-router.get("/top-apps", 
+router.get("/top-apps",
     verifyToken,
   authorizeRole("superadmin", "admin"),
   getTopApplicationsToday

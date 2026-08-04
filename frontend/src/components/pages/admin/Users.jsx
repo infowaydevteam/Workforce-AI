@@ -160,7 +160,7 @@ useEffect(() => {
       ...prev,
       role: "employee",
       organization_id: user.organization_id,
-      team_id: user.team_id, 
+      team_id: user.team_id,
     }));
   }
 }, [showModal]);
@@ -173,9 +173,9 @@ const handleAddUser = async (e) => {
   };
 
   if (role !== "superadmin") {
-    payload.role = "employee"; 
+    payload.role = "employee";
     payload.organization_id = user.organization_id;
-    payload.team_id = user.team_id; 
+    payload.team_id = user.team_id;
   }
 
   try {
