@@ -5,20 +5,45 @@ public static class StartupService
 {
     public static void Register()
     {
-        string exePath =
-            Process.GetCurrentProcess()
-            .MainModule
-            .FileName;
+        try
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                Console.WriteLine("Startup registration skipped: not running on Windows.");
+                return;
+            }
 
-        RegistryKey key =
-            Registry.CurrentUser.OpenSubKey(
-                @"Software\Microsoft\Windows\CurrentVersion\Run",
-                true
-            );
+            string? exePath =
+                Process.GetCurrentProcess()
+                .MainModule
+                ?.FileName;
 
-        key.SetValue("IWFAgent", exePath);
+            if (string.IsNullOrWhiteSpace(exePath))
+            {
+                Console.WriteLine("Startup registration skipped: executable path missing.");
+                return;
+            }
 
-        Console.WriteLine("Startup Registered Successfully");
-        Console.WriteLine(exePath);
+            RegistryKey? key =
+                Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Run",
+                    true
+                );
+
+            if (key == null)
+            {
+                Console.WriteLine("Startup registration skipped: registry key unavailable.");
+                return;
+            }
+
+            key.SetValue("IWFAgent", exePath);
+
+            Console.WriteLine("Startup Registered Successfully");
+            Console.WriteLine(exePath);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Startup registration warning: {ex.Message}");
+        }
     }
 }

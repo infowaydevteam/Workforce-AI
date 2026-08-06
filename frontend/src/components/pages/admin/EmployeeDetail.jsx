@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { API_BASE_URL } from "../../../../config";
+import { Copy, ExternalLink } from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -61,6 +62,29 @@ const EmployeeDetail = () => {
   const [activityLogs, setActivityLogs] = useState([]);
 
   const [date, setDate] = useState(getTodayDate());
+
+  const getAgentDownloadUrl = (platform = "") => {
+    if (!user?.agent_token) return "";
+
+    const url = `${API_BASE_URL}/api/agent/download-agent/${user.agent_token}`;
+    return platform ? `${url}?platform=${platform}` : url;
+  };
+
+  const copyAgentLink = async () => {
+    const url = getAgentDownloadUrl();
+
+    try {
+      await navigator.clipboard.writeText(url);
+      alert("Agent download link copied");
+    } catch {
+      window.prompt("Copy agent download link", url);
+    }
+  };
+
+  const openAgentLink = () => {
+    const url = getAgentDownloadUrl();
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   // ---------------- FETCH ----------------
   const fetchAll = async (selectedDate = date) => {
@@ -191,6 +215,41 @@ const EmployeeDetail = () => {
 
           </div>
 
+        </div>
+
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">
+                Agent Install Link
+              </h2>
+              <p className="text-sm text-slate-500 mt-1">
+                Employee-specific download link generated from this user's agent token.
+              </p>
+              <div className="mt-3 text-xs text-slate-500 break-all bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                {user.agent_token ? getAgentDownloadUrl() : "Agent token not generated"}
+              </div>
+            </div>
+
+            {user.agent_token && (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={copyAgentLink}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-sm font-semibold"
+                >
+                  <Copy size={16} />
+                  Copy Link
+                </button>
+                <button
+                  onClick={() => openAgentLink()}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm font-semibold"
+                >
+                  <ExternalLink size={16} />
+                  Open Page
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* SUMMARY CARDS */}

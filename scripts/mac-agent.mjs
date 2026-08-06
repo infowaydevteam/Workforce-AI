@@ -1,15 +1,32 @@
 import { execFile } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
+import fsp from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const rootDir = path.resolve(import.meta.dirname, "..");
-const configPath = path.join(rootDir, "IWF-Agent", "IWF-Agent", "config.json");
+const installedConfigPath = path.join(
+  os.homedir(),
+  "Library",
+  "Application Support",
+  "IWF-Agent",
+  "config.json"
+);
+const repoConfigPath = path.join(rootDir, "IWF-Agent", "IWF-Agent", "config.json");
+const configPath = process.env.IWF_AGENT_CONFIG ||
+  (fs.existsSync(installedConfigPath) ? installedConfigPath : repoConfigPath);
+const installDir = process.env.IWF_AGENT_INSTALL_DIR ||
+  path.resolve(import.meta.dirname);
 
 const TICK_MS = 5000;
 const ACTIVE_CHUNK_SECONDS = 30;
 const POLICY_REFRESH_MS = 30000;
+const UPDATE_CHECK_MS = 6 * 60 * 60 * 1000;
+const CURRENT_VERSION = "1.0.0";
+const PLATFORM = "macos";
 
 const state = {
   user: null,
@@ -62,6 +79,168 @@ const postJson = (url, body) =>
     method: "POST",
     body: JSON.stringify(body),
   });
+
+const sha256File = async (filePath) =>
+  new Promise((resolve, reject) => {
+    const hash = crypto.createHash("sha256");
+    const stream = fs.createReadStream(filePath);
+
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("error", reject);
+    stream.on("end", () => resolve(hash.digest("hex")));
+  });
+
+const downloadFile = async (url, destinationPath) => {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Update download failed: ${response.status} ${response.statusText}`);
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  await fsp.writeFile(destinationPath, buffer);
+};
+
+const copyDirectory = async (source, destination) => {
+  await fsp.mkdir(destination, { recursive: true });
+  const entries = await fsp.readdir(source, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const from = path.join(source, entry.name);
+    const to = path.join(destination, entry.name);
+
+    if (entry.isDirectory()) {
+      await copyDirectory(from, to);
+    } else if (entry.isFile() && entry.name !== "config.json") {
+      await fsp.copyFile(from, to);
+    }
+  }
+};
+
+const applyMacUpdate = async (packagePath, stagingPath) => {
+  const extension = path.extname(packagePath).toLowerCase();
+
+  if (extension === ".pkg") {
+    await execFileAsync("installer", ["-pkg", packagePath, "-target", "CurrentUserHomeDirectory"], {
+      timeout: 120000,
+    });
+    console.log("Applied macOS PKG update. Agent will exit and LaunchAgent should restart it.");
+    return true;
+  }
+
+  if (extension === ".dmg") {
+    const mountPoint = path.join(os.tmpdir(), `iwf-agent-update-${Date.now()}`);
+    await fsp.mkdir(mountPoint, { recursive: true });
+
+    try {
+      await execFileAsync("hdiutil", ["attach", packagePath, "-mountpoint", mountPoint, "-nobrowse", "-quiet"], {
+        timeout: 60000,
+      });
+
+      const files = await fsp.readdir(mountPoint);
+      const pkg = files.find((file) => file.toLowerCase().endsWith(".pkg"));
+
+      if (!pkg) {
+        console.log("Mounted DMG did not contain a PKG installer.");
+        return false;
+      }
+
+      await execFileAsync("installer", ["-pkg", path.join(mountPoint, pkg), "-target", "CurrentUserHomeDirectory"], {
+        timeout: 120000,
+      });
+      console.log("Applied macOS DMG/PKG update. Agent will exit and LaunchAgent should restart it.");
+      return true;
+    } finally {
+      await execFileAsync("hdiutil", ["detach", mountPoint, "-quiet"]).catch(() => {});
+    }
+  }
+
+  if (extension === ".zip") {
+    await copyDirectory(stagingPath, installDir);
+    console.log(`Applied macOS ZIP update into ${installDir}. Agent will exit and LaunchAgent should restart it.`);
+    return true;
+  }
+
+  return false;
+};
+
+const checkForUpdates = async () => {
+  try {
+    const manifest = await jsonRequest(
+      `${config.apiBaseUrl}/api/agent/updates?platform=${PLATFORM}&version=${CURRENT_VERSION}&agent_token=${encodeURIComponent(config.token)}`
+    );
+
+    if (!manifest.update_available) {
+      console.log(`Agent is up to date (${CURRENT_VERSION}).`);
+      return;
+    }
+
+    if (!manifest.download_url || !manifest.latest_version || !manifest.package_name) {
+      console.log("Update is available, but download metadata is incomplete.");
+      return;
+    }
+
+    const updateRoot = path.join(
+      os.homedir(),
+      "Library",
+      "Application Support",
+      "IWF-Agent",
+      "updates",
+      manifest.latest_version
+    );
+    const packagePath = path.join(updateRoot, manifest.package_name);
+    const stagingPath = path.join(updateRoot, "staged");
+
+    await fsp.mkdir(updateRoot, { recursive: true });
+
+    console.log(`Downloading agent update ${manifest.latest_version}...`);
+    await downloadFile(manifest.download_url, packagePath);
+
+    if (manifest.checksum_sha256) {
+      const checksum = await sha256File(packagePath);
+
+      if (checksum.toLowerCase() !== manifest.checksum_sha256.toLowerCase()) {
+        await fsp.rm(packagePath, { force: true });
+        console.log("Downloaded update failed checksum validation.");
+        return;
+      }
+    }
+
+    await fsp.rm(stagingPath, { recursive: true, force: true });
+    await fsp.mkdir(stagingPath, { recursive: true });
+
+    if (path.extname(packagePath).toLowerCase() === ".zip") {
+      await execFileAsync("ditto", ["-x", "-k", packagePath, stagingPath], {
+        timeout: 30000,
+      });
+    }
+
+    await fsp.writeFile(
+      path.join(updateRoot, "update.json"),
+      JSON.stringify(
+        {
+          platform: PLATFORM,
+          from_version: CURRENT_VERSION,
+          to_version: manifest.latest_version,
+          package_name: manifest.package_name,
+          package_path: packagePath,
+          staged_at: new Date().toISOString(),
+          apply_on_next_restart: true,
+        },
+        null,
+        2
+      )
+    );
+
+    console.log(`Update ${manifest.latest_version} downloaded and staged at ${stagingPath}.`);
+
+    if (await applyMacUpdate(packagePath, stagingPath)) {
+      process.exit(0);
+    }
+  } catch (error) {
+    console.log(`Update check warning: ${error.message}`);
+  }
+};
 
 const runAppleScript = async (script) => {
   const args = script.flatMap((line) => ["-e", line]);
@@ -573,6 +752,7 @@ if (!state.user.success) {
 
 await fetchPolicy(true);
 await fetchRestrictedItems();
+await checkForUpdates();
 
 const initialWindow = await getActiveWindow();
 state.lastWindow = initialWindow.displayName;
@@ -589,6 +769,12 @@ console.log("Press Ctrl+C to stop and close the session.");
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
+
+setInterval(() => {
+  checkForUpdates().catch((error) => {
+    console.error(`Mac Agent Update Error: ${error.message}`);
+  });
+}, UPDATE_CHECK_MS);
 
 setInterval(() => {
   tick().catch((error) => {

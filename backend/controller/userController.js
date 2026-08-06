@@ -10,6 +10,7 @@ const getUsers = async (req, res) => {
   users.email,
   users.role,
   users.status,
+  users.agent_token,
   users.organization_id,
   users.team_id,
   users.manager_id,
@@ -135,6 +136,7 @@ const getEmployeeById = async (req, res) => {
         u.email,
         u.role,
         u.status,
+        u.agent_token,
         u.last_active,
         o.name AS organization_name,
         t.name AS team_name

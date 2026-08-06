@@ -10,6 +10,10 @@ class Program
         {
             Console.WriteLine("IWF Background Agent Started...");
 
+            // ==========================
+            // Read Saved Token
+            // ==========================
+
             if (!ConfigService.IsActivated())
             {
                 Console.WriteLine("Agent is not activated.");
@@ -28,71 +32,57 @@ class Program
 
             UserContext.UserId = result.user_id;
 
-            Console.WriteLine(
-                $"Logged User ID: {UserContext.UserId}"
-            );
+            Console.WriteLine($"Logged User ID: {UserContext.UserId}");
 
-            // START SESSION
-            await ApiService.StartSession();
-            Console.WriteLine("START SESSION API CALL");
+            StartupService.Register();
 
-            // Load Restricted Apps / Websites
-var restrictedItems =
-    await ApiService.GetRestrictedItems();
-
-if (restrictedItems != null &&
-    restrictedItems.Success)
-{
-    RestrictedAppService.Load(
-        restrictedItems.Apps
-    );
-
-    RestrictedSiteService.Load(
-        restrictedItems.Sites
-    );
-}
-else
-{
-    Console.WriteLine(
-        "Failed to load restricted items."
-    );
-}
-
-// Load Tracked Websites
-await ApiService.GetTrackedWebsites();
-
-// Start Services
-ActivityService.Start();
-
-Console.WriteLine(
-    "Activity Service Started"
-);
-
-LockService.Start();
-
-            // HEARTBEAT
-            _ = Task.Run(async () =>
+            if (await AgentUpdateService.CheckForUpdates())
             {
-                while (true)
-                {
-                    try
-                    {
-                        await ApiService.SendHeartbeat();
+                return;
+            }
+            AgentUpdateService.StartPeriodicChecks();
 
-                        Console.WriteLine(
-                            $"Heartbeat Sent : {DateTime.Now}"
-                        );
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(
-                            $"Heartbeat Error : {ex.Message}"
-                        );
-                    }
+            var policyConfig =
+                await ApiService.GetAgentPolicyConfig();
 
-                    await Task.Delay(10000);
-                }
-            });
+            ActivityService.Configure(policyConfig);
+
+            // ==========================
+            // Start Session
+            // ==========================
+
+            await ApiService.StartSession();
+
+            // ==========================
+            // Load Restricted Items
+            // ==========================
+
+            var restrictedItems =
+                await ApiService.GetRestrictedItems();
+
+            if (restrictedItems != null &&
+                restrictedItems.Success)
+            {
+                RestrictedAppService.Load(
+                    restrictedItems.Apps
+                );
+
+                RestrictedSiteService.Load(
+                    restrictedItems.Sites
+                );
+            }
+            else
+            {
+                Console.WriteLine(
+                    "Failed to load restricted items."
+                );
+            }
+
+            // ==========================
+            // Start Monitoring
+            // ==========================
+
+            ActivityService.Start();
 
             await Task.Delay(Timeout.Infinite);
         }
@@ -102,14 +92,7 @@ LockService.Start();
         }
         finally
         {
-            Console.WriteLine(
-                "Stopping Activity Service..."
-            );
-
-            LockService.Stop();
-
             await ActivityService.Stop();
-            
         }
     }
 }

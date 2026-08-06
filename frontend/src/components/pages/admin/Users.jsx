@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Trash2, UserCog, Users as UsersIcon } from "lucide-react";
+import { Copy, ExternalLink, Plus, Trash2, UserCog, Users as UsersIcon } from "lucide-react";
 import { API_BASE_URL } from "../../../../config";
 import { useNavigate } from "react-router-dom";
 
@@ -28,6 +28,29 @@ const Users = () => {
     team_id: "",
     manager_id: "",
   });
+
+  const getAgentDownloadUrl = (agentToken, platform = "") => {
+    if (!agentToken) return "";
+
+    const url = `${API_BASE_URL}/api/agent/download-agent/${agentToken}`;
+    return platform ? `${url}?platform=${platform}` : url;
+  };
+
+  const copyAgentLink = async (agentToken) => {
+    const url = getAgentDownloadUrl(agentToken);
+
+    try {
+      await navigator.clipboard.writeText(url);
+      alert("Agent download link copied");
+    } catch {
+      window.prompt("Copy agent download link", url);
+    }
+  };
+
+  const openAgentLink = (agentToken) => {
+    const url = getAgentDownloadUrl(agentToken);
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+  };
 
 
   const fetchUsers = async () => {
@@ -306,6 +329,10 @@ const Users = () => {
                     Status
                   </th>
 
+                  <th className="text-left p-4 text-xs uppercase tracking-wider text-slate-500">
+                    Agent Install
+                  </th>
+
                   <th className="text-center p-4 text-xs uppercase tracking-wider text-slate-500">
                     Action
                   </th>
@@ -370,6 +397,34 @@ const Users = () => {
                         </span>
                       </td>
 
+                      <td className="p-4">
+                        {user.agent_token ? (
+                          <div
+                            className="flex flex-wrap gap-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              onClick={() => copyAgentLink(user.agent_token)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold"
+                              title="Copy employee-specific download link"
+                            >
+                              <Copy size={13} />
+                              Copy
+                            </button>
+                            <button
+                              onClick={() => openAgentLink(user.agent_token)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-semibold"
+                              title="Open employee download page"
+                            >
+                              <ExternalLink size={13} />
+                              Open
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">Not generated</span>
+                        )}
+                      </td>
+
                       <td className="p-4 text-center">
                         <div className="flex justify-center gap-2">
                           <button
@@ -396,7 +451,7 @@ const Users = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8" className="p-8 text-center text-gray-400">
+                    <td colSpan="9" className="p-8 text-center text-gray-400">
                       <div className="flex flex-col items-center py-10 text-slate-400">
                         <UsersIcon size={50} />
 
