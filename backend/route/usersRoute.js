@@ -1,20 +1,27 @@
 const express = require("express");
-const { getUsers, deleteUser, updateStatus, getEmployeeById, getLoginHistory, getAppUsage, getActivitySummary, getActivityLogs, getReportsSummary, getAttendanceReport, getProductivityRanking, getReportsAppUsage, getUserFullReport } = require("../controller/userController");
+const { getUsers, deleteUser, updateUserAssignment, updateStatus, getEmployeeById, getLoginHistory, getAppUsage, getActivitySummary, getActivityLogs, getReportsSummary, getAttendanceReport, getProductivityRanking, getReportsAppUsage, getUserFullReport } = require("../controller/userController");
 const { authorizeRole, verifyToken } = require("../middleware/authMiddleware");
 const router = express.Router();
 
 router.get(
   "/",
   verifyToken,
-  authorizeRole("superadmin","admin"),
+  authorizeRole("admin"),
   getUsers
 );
 
 router.delete(
   "/:id",
   verifyToken,
-  authorizeRole("superadmin","admin"),
+  authorizeRole("admin"),
   deleteUser
+);
+
+router.put(
+  "/:id/assignment",
+  verifyToken,
+  authorizeRole("admin"),
+  updateUserAssignment
 );
 
 router.post("/status", updateStatus);

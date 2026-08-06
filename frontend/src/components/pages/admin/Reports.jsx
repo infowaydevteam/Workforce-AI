@@ -4,7 +4,8 @@ import { Download } from "lucide-react";
 
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-
+import html2canvas from "html2canvas";
+import { useRef } from "react";
 import {
   ResponsiveContainer,
   PieChart,
@@ -19,450 +20,386 @@ import {
   Legend,
 } from "recharts";
 
-const COLORS = ["#4f46e5", "#22c55e", "#ef4444"];
+const COLORS = ["#4f46e5", "#22c55e"];
+
+
+
 
 const formatDuration = (sec) => {
-  sec = Number(sec || 0);
+  sec = Math.max(0, Number(sec || 0));
 
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   const s = sec % 60;
 
-  if (h) return `${h}h ${m}m ${s}s`;
-  if (m) return `${m}m ${s}s`;
+  if (h > 0) return `${h}h ${m}m ${s}s`;
+  if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;
 };
 
+const formatDate = (date) =>
+  date ? new Date(date).toLocaleString("en-IN") : "-";
+
 const Card = ({ title, value }) => (
-  <div className="bg-white p-5 rounded-2xl shadow-sm border hover:shadow-md transition">
-    <p className="text-gray-500 text-sm">{title}</p>
-    <h2 className="text-2xl font-bold mt-2 text-gray-800">{value}</h2>
+  <div className="bg-white p-5 rounded-2xl shadow-sm border">
+    <p className="text-slate-500 text-sm">{title}</p>
+    <h2 className="text-2xl font-bold mt-2">{value}</h2>
   </div>
 );
 
+const shortenAppName = (name = "") => {
+  if (name.length <= 10) return name;
+
+  return `${name.slice(0, 10)}...`;
+};
+
 const Reports = () => {
-  const token = localStorage.getItem("token");
-
-  const [teams, setTeams] = useState([]);
-  const [teamId, setTeamId] = useState("");
-
+  const [employees, setEmployees] = useState([]);
+  const [selectedUser, setSelectedUser] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-
   const [report, setReport] = useState(null);
-  const [expandedUser, setExpandedUser] = useState(null);
+  const pieRef = useRef(null);
+  const barRef = useRef(null);
+
+  const token = localStorage.getItem("token");
 
   useEffect(() => {
-    loadTeams();
+    const fetchEmployees = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/employee`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = await res.json();
+        setEmployees(data);
+      } catch (err) {
+        console.log(err);
+      }
+    };
+
+    fetchEmployees();
   }, []);
 
-  const loadTeams = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/teams`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await res.json();
-
-      setTeams(data);
-    } catch (err) {
-      console.log(err);
-    }
-  };
 
   const generateReport = async () => {
-    if (!teamId) {
-      alert("Please Select Team");
-      return;
-    }
+    if (!selectedUser) return alert("Select Employee");
 
     try {
       const res = await fetch(
-        `${API_BASE_URL}/api/team-report/${teamId}?from=${fromDate}&to=${toDate}`,
+        `${API_BASE_URL}/api/employee/reports/${selectedUser}?from=${fromDate}&to=${toDate}`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
       const data = await res.json();
-
-      console.log(data);
-
-      if (data.success) {
-        setReport(data.data);
-      } else {
-        alert(data.message || "Unable to generate report");
-      }
+      setReport(data);
     } catch (err) {
       console.log(err);
     }
   };
 
-  const exportPDF = () => {
-    const doc = new jsPDF();
+  const exportReport = async () => {
+    if (!report) return;
 
-    doc.setFontSize(18);
-    doc.text("IWF Team Productivity Report", 14, 18);
+    const doc = new jsPDF("p", "mm", "a4");
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    let y = 15;
+
+    // HEADER
+    doc.setFontSize(20);
+    doc.text("IWF Employee Productivity Report", 14, y);
+
+    y += 10;
 
     doc.setFontSize(11);
+    doc.text(`Employee: ${report.user.name}`, 14, y);
+    y += 6;
 
-    doc.text(`Admin : ${report.admin.name}`, 14, 30);
-
-    doc.text(`Email : ${report.admin.email}`, 14, 37);
-
-    doc.text(`Organization ID : ${report.organization.id}`, 14, 44);
-
-    doc.text(`Team ID : ${report.team.id}`, 14, 51);
+    doc.text(`Email: ${report.user.email}`, 14, y);
+    y += 6;
 
     doc.text(
-      `Report : ${report.report_period.from}  To  ${report.report_period.to}`,
+      `Generated: ${new Date().toLocaleString("en-IN")}`,
       14,
-      58
+      y
     );
 
-    autoTable(doc, {
-      startY: 68,
+    y += 8;
 
+    // PRODUCTIVITY
+    const productivity =
+      report.summary.total_working_time > 0
+        ? Math.round(
+          (report.summary.active_time /
+            report.summary.total_working_time) *
+          100
+        )
+        : 0;
+
+    // SUMMARY TABLE
+    autoTable(doc, {
+      startY: y,
+      theme: "grid",
       head: [["Metric", "Value"]],
-
       body: [
-        ["Members", report.summary.total_members],
-
-        ["Working Time", formatDuration(report.summary.working_time)],
-
-        ["Active Time", formatDuration(report.summary.active_time)],
-
-        ["Idle Time", formatDuration(report.summary.idle_time)],
-
-        ["Offline Time", formatDuration(report.summary.offline_time)],
-
-        ["Productivity", `${report.summary.productivity}%`],
-      ],
-    });
-
-    // Employees Application Details
-
-    doc.setFontSize(16);
-    doc.setFont(undefined, "bold");
-    doc.text(
-      "Employees Application Details",
-      14,
-      doc.lastAutoTable.finalY + 10
-    );
-
-    doc.setFontSize(11);
-    doc.setFont(undefined, "normal");
-
-    autoTable(doc, {
-      startY: doc.lastAutoTable.finalY + 18,
-
-      head: [["Application", "Active", "Idle", "Total"]],
-
-      body: report.app_usage.map((app) => [
-        app.app_name || "Idle / No Active App",
-        formatDuration(app.active_time),
-        formatDuration(app.idle_time),
-        formatDuration(app.total_time),
-      ]),
-    });
-
-
-    // Employee Wise Summary PDF
-
-    doc.setFontSize(16);
-    doc.setFont(undefined, "bold");
-    doc.text(
-      "Employee Wise Summary",
-      14,
-      doc.lastAutoTable.finalY + 10
-    );
-
-    doc.setFontSize(11);
-    doc.setFont(undefined, "normal");
-
-    autoTable(doc, {
-
-      startY: doc.lastAutoTable.finalY + 18,
-
-      head: [
         [
-          "Employee",
-          "Active",
-          "Idle",
-          "Total",
-          "Productivity"
-        ]
+          "Work Hours",
+          formatDuration(report.summary.total_working_time),
+        ],
+        [
+          "Active Time",
+          formatDuration(report.summary.active_time),
+        ],
+        [
+          "Idle Time",
+          formatDuration(report.summary.idle_time),
+        ],
+        [
+          "Sessions",
+          report.summary.total_sessions || 0,
+        ],
+        [
+          "Productivity",
+          `${productivity}%`,
+        ],
       ],
-
-
-      body:
-
-        report.user_details.map((user) => {
-
-
-          let active = 0;
-          let idle = 0;
-
-
-          user.applications.forEach((app) => {
-
-            active += Number(app.active_time || 0);
-
-            idle += Number(app.idle_time || 0);
-
-          });
-
-
-
-          let total = active + idle;
-
-
-          let productivity =
-            total > 0
-              ?
-              Math.round((active / total) * 100)
-              :
-              0;
-
-
-
-          return [
-
-            user.name,
-
-            formatDuration(active),
-
-            formatDuration(idle),
-
-            formatDuration(total),
-
-            `${productivity}%`
-
-          ];
-
-
-        })
-
     });
 
+    y = doc.lastAutoTable.finalY + 8;
 
+    // CHARTS
+    const chartHeight = 60;
+    const chartWidth = 85;
 
-
-
-    // Employee Application Details
-
-
-    report.user_details.forEach((user) => {
-
-
+    // Agar same page me jagah nahi hai tabhi new page
+    if (y + chartHeight > pageHeight - 15) {
       doc.addPage();
+      y = 15;
+    }
 
+    // Pie Chart
+    if (pieRef.current) {
+      const pieCanvas = await html2canvas(pieRef.current, {
+        scale: 2,
+      });
 
+      const pieImg = pieCanvas.toDataURL("image/png");
 
-      doc.setFontSize(16);
+      doc.text("Active vs Idle", 14, y - 2);
+
+      doc.addImage(
+        pieImg,
+        "PNG",
+        14,
+        y,
+        chartWidth,
+        chartHeight
+      );
+    }
+
+    // Bar Chart
+    if (barRef.current) {
+      const barCanvas = await html2canvas(barRef.current, {
+        scale: 2,
+      });
+
+      const barImg = barCanvas.toDataURL("image/png");
+
+      doc.text("App Usage", 108, y - 2);
+
+      doc.addImage(
+        barImg,
+        "PNG",
+        108,
+        y,
+        chartWidth,
+        chartHeight
+      );
+    }
+
+    y += chartHeight + 10;
+
+    // ACTIVITY LOGS
+    if ((report.activityLogs || []).length > 0) {
+      if (y + 20 > pageHeight - 15) {
+        doc.addPage();
+        y = 15;
+      }
+
+      doc.setFontSize(14);
+      doc.text("Activity Logs", 14, y);
+
+      autoTable(doc, {
+        startY: y + 5,
+        theme: "striped",
+        head: [["App", "Start", "End", "Duration"]],
+        body: report.activityLogs.map((a) => [
+          a.app_name,
+          formatDate(a.start_time),
+          formatDate(a.end_time),
+          formatDuration(a.duration),
+        ]),
+        styles: {
+          fontSize: 8,
+        },
+        headStyles: {
+          fillColor: [79, 70, 229],
+        },
+      });
+
+      y = doc.lastAutoTable.finalY + 10;
+    }
+
+    // WEEKLY SUMMARY
+    if ((report.weeklySummary || []).length > 0) {
+      if (y + 30 > pageHeight - 15) {
+        doc.addPage();
+        y = 15;
+      }
+
+      doc.setFontSize(14);
+      doc.text("Weekly Summary", 14, y);
+
+      autoTable(doc, {
+        startY: y + 5,
+        theme: "grid",
+        head: [["Week", "Total Time"]],
+        body: report.weeklySummary.map((w) => [
+          new Date(w.week).toLocaleDateString("en-IN"),
+          formatDuration(w.total_time),
+        ]),
+        headStyles: {
+          fillColor: [79, 70, 229],
+        },
+      });
+    }
+
+    // PAGE NUMBERS
+    const totalPages = doc.getNumberOfPages();
+
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+
+      doc.setFontSize(10);
 
       doc.text(
-        `${user.name} - Application Details`,
-        14,
-        20
+        `Page ${i} of ${totalPages}`,
+        pageWidth - 35,
+        pageHeight - 8
       );
+    }
 
-
-
-      if (user.applications.length === 0) {
-
-
-        doc.setFontSize(12);
-
-        doc.text(
-          "No Activity Found",
-          14,
-          35
-        );
-
-
-      }
-
-      else {
-
-
-        autoTable(doc, {
-
-
-          startY: 30,
-
-
-          head: [
-
-            [
-              "Application",
-              "Active",
-              "Idle",
-              "Total"
-
-            ]
-
-          ],
-
-
-
-          body:
-
-
-            user.applications.map((app) => [
-
-
-              app.app_name || "Unknown",
-
-
-              formatDuration(app.active_time),
-
-
-              formatDuration(app.idle_time),
-
-
-              formatDuration(app.total_time)
-
-
-            ])
-
-
-        });
-
-
-      }
-
-
-
-    });
-
-    doc.save("Team_Productivity_Report.pdf");
+    doc.save(
+      `${report.user.name.replace(/\s+/g, "_")}_Report.pdf`
+    );
   };
 
   if (!report) {
     return (
       <div className="min-h-screen bg-slate-100 p-6">
         <div className="max-w-7xl mx-auto space-y-6">
-          <div className="bg-gradient-to-r from-indigo-700 to-purple-700 rounded-3xl p-8 text-white">
-            <h1 className="text-4xl font-bold">Team Reports</h1>
 
-            <p className="mt-2 text-indigo-100">
-              Generate Team Productivity Report
+          <div className="bg-gradient-to-r from-indigo-700 to-purple-700 rounded-3xl p-8 text-white">
+            <h1 className="text-4xl font-bold">Reports</h1>
+            <p className="text-indigo-100 mt-2">
+              Generate Employee Reports
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 grid md:grid-cols-4 gap-4">
-            <select
-              value={teamId}
-              onChange={(e) => setTeamId(e.target.value)}
-              className="border rounded-xl p-3"
-            >
-              <option value="">Select Team</option>
+          <div className="bg-white p-5 rounded-2xl shadow-sm grid lg:grid-cols-4 gap-4">
 
-              {teams.map((team) => (
-                <option key={team.id} value={team.id}>
-                  {team.team_name}
+            <select
+              className="border rounded-xl p-3"
+              value={selectedUser}
+              onChange={(e) => setSelectedUser(e.target.value)}
+            >
+              <option value="">Select Employee</option>
+              {employees.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name}
                 </option>
               ))}
             </select>
 
             <input
               type="date"
+              className="border rounded-xl p-3"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              className="border rounded-xl p-3"
             />
 
             <input
               type="date"
+              className="border rounded-xl p-3"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="border rounded-xl p-3"
             />
 
             <button
               onClick={generateReport}
-              className="bg-indigo-600 text-white rounded-xl hover:bg-indigo-700"
+              className="bg-indigo-600 text-white rounded-xl flex items-center justify-center"
             >
               Generate Report
             </button>
+
           </div>
+
         </div>
       </div>
     );
   }
 
+
   const pieData = [
-    {
-      name: "Active",
-      value: Number(report.summary.active_time),
-    },
-    {
-      name: "Idle",
-      value: Number(report.summary.idle_time),
-    },
-    {
-      name: "Offline",
-      value: Number(report.summary.offline_time),
-    },
+    { name: "Active", value: Math.max(0, Number(report?.summary?.active_time || 0)) },
+    { name: "Idle", value: Math.max(0, Number(report?.summary?.idle_time || 0)) },
   ];
 
-  const appData = [...report.app_usage]
-    .sort((a, b) => Number(b.total_time) - Number(a.total_time))
-    .slice(0, 10)
-    .map((app) => ({
-      name: app.app_name || "Idle",
-      time: Number(app.total_time),
-    }));
+  const appChart = (report?.appUsage || []).map((a) => ({
+    name: a.app_name,
+    usage: Math.max(0, Number(a.total_duration || 0)),
+  }));
 
-  const totalAppTime = report.app_usage.reduce(
-    (sum, app) => sum + Number(app.total_time || 0),
-    0
-  );
+  const productivity =
+    report.summary.total_working_time > 0
+      ? Math.round(
+        (report.summary.active_time /
+          report.summary.total_working_time) *
+        100
+      )
+      : 0;
+
   return (
     <div className="min-h-screen bg-slate-100 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
 
-        <div className="bg-gradient-to-r from-indigo-700 to-purple-700 rounded-3xl p-8 text-white flex flex-col md:flex-row justify-between items-center gap-4">
-
+        {/* HEADER */}
+        <div className="bg-gradient-to-r from-indigo-700 to-purple-700 rounded-3xl p-8 text-white flex justify-between">
           <div>
-            <h1 className="text-3xl font-bold">
-              {report.admin.name}
-            </h1>
-
-            <p className="text-indigo-100 mt-2">
-              Team Productivity Report
-            </p>
-
-            <p className="text-sm mt-2 text-indigo-200">
-              {report.report_period.from} → {report.report_period.to}
-            </p>
+            <h1 className="text-3xl font-bold">{report.user.name}</h1>
+            <p className="text-indigo-100">{report.user.email}</p>
           </div>
 
           <button
-            onClick={exportPDF}
-            className="bg-white text-indigo-700 px-5 py-3 rounded-xl flex items-center gap-2 hover:bg-indigo-50"
+            onClick={exportReport}
+            className="bg-white text-indigo-700 px-4 py-2 rounded-xl flex items-center gap-2"
           >
             <Download size={18} />
-            Export PDF
+            Export
           </button>
-
         </div>
 
-        <div className="grid lg:grid-cols-6 md:grid-cols-3 grid-cols-2 gap-4">
+        {/* SUMMARY */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
 
           <Card
-            title="Members"
-            value={report.summary.total_members}
-          />
-
-          <Card
-            title="Working Time"
-            value={formatDuration(report.summary.working_time)}
+            title="Work Hours"
+            value={formatDuration(report.summary.total_working_time)}
           />
 
           <Card
@@ -476,686 +413,106 @@ const Reports = () => {
           />
 
           <Card
-            title="Offline Time"
-            value={formatDuration(report.summary.offline_time)}
+            title="Sessions"
+            value={report.summary.total_sessions || 0}
           />
 
           <Card
             title="Productivity"
-            value={`${report.summary.productivity}%`}
+            value={`${productivity}%`}
           />
 
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
+        {/* CHARTS */}
+        <div className="grid md:grid-cols-2 gap-6">
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border" ref={pieRef}>
+            <h2 className="font-bold mb-4">Active vs Idle</h2>
 
-            <h2 className="text-lg font-bold mb-5">
-              Active vs Idle vs Offline
-            </h2>
-
-            <ResponsiveContainer width="100%" height={320}>
-
+            <ResponsiveContainer width="100%" height={250}>
               <PieChart>
-
-                <Pie
-                  data={pieData}
-                  dataKey="value"
-                  nameKey="name"
-                  outerRadius={110}
-                  label
-                >
-
-                  {pieData.map((entry, index) => (
-
-                    <Cell
-                      key={index}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-
+                <Pie data={pieData} dataKey="value" outerRadius={100} label>
+                  {pieData.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i]} />
                   ))}
-
                 </Pie>
-
-                <Tooltip
-                  formatter={(value) => formatDuration(value)}
-                />
-
+                <Tooltip />
                 <Legend />
-
               </PieChart>
-
             </ResponsiveContainer>
 
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border" ref={barRef}>
+            <h2 className="font-bold mb-4">App Usage</h2>
 
-            <h2 className="text-lg font-bold mb-5">
-              Top 10 Application Usage
-            </h2>
-
-            <ResponsiveContainer width="100%" height={320}>
-
-              <BarChart
-                data={appData}
-                margin={{
-                  top: 20,
-                  right: 20,
-                  left: 10,
-                  bottom: 90,
-                }}
-              >
-
-                <CartesianGrid strokeDasharray="3 3" />
-
-                <XAxis
-                  dataKey="name"
-                  interval={0}
-                  angle={-35}
-                  textAnchor="end"
-                  height={100}
-                  tick={{
-                    fontSize: 11,
-                  }}
-                />
-
-                <YAxis
-                  tickFormatter={(v) =>
-                    Math.round(v / 60) + "m"
-                  }
-                />
-
-                <Tooltip
-                  formatter={(value) =>
-                    formatDuration(value)
-                  }
-                />
-
-                <Legend />
-
-                <Bar
-                  dataKey="time"
-                  name="Usage Time"
-                  radius={[6, 6, 0, 0]}
-                />
-
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={appChart}>
+                <CartesianGrid />
+                <XAxis dataKey="name" tickFormatter={(value) => shortenAppName(value)} />
+                <YAxis />
+                <Tooltip formatter={(v) => formatDuration(v)} />
+                <Bar dataKey="usage" fill="#4f46e5" />
               </BarChart>
-
             </ResponsiveContainer>
 
           </div>
 
         </div>
 
+        {/* ACTIVITY TABLE */}
+        <div className="bg-white rounded-2xl shadow-sm border p-6">
 
+          <h2 className="font-bold mb-4">Activity Logs</h2>
 
-        <div className="bg-white rounded-2xl shadow-sm p-6">
+          <table className="w-full text-sm">
 
-          <div className="flex justify-between items-center mb-5">
+            <thead>
+              <tr className="text-left border-b">
+                <th className="p-3">App</th>
+                <th className="p-3">Start</th>
+                <th className="p-3">End</th>
+                <th className="p-3">Duration</th>
+              </tr>
+            </thead>
 
-            <h2 className="text-xl font-bold">
-              Overall Application Usage
-            </h2>
-
-            <span className="text-sm text-gray-500">
-              {report.app_usage.length} Applications
-            </span>
-
-          </div>
-
-          <div className="overflow-x-auto">
-
-            <table className="min-w-full">
-              <thead>
-
-                <tr className="bg-slate-100 border-b">
-
-                  <th className="text-left p-3">
-                    Application
-                  </th>
-
-                  <th className="text-center p-3">
-                    Active
-                  </th>
-
-                  <th className="text-center p-3">
-                    Idle
-                  </th>
-
-                  <th className="text-center p-3">
-                    Total
-                  </th>
-
-                </tr>
-
-              </thead>
-
-              <tbody>                {report.app_usage.map((app, index) => (
-                <tr
-                  key={index}
-                  className="border-b hover:bg-slate-50 transition"
-                >
-                  <td className="p-3 font-medium text-gray-700">
-                    {app.app_name || "Idle / No Active App"}
-                  </td>
-
-                  <td className="p-3 text-center">
-                    {formatDuration(app.active_time)}
-                  </td>
-
-                  <td className="p-3 text-center">
-                    {formatDuration(app.idle_time)}
-                  </td>
-
-                  <td className="p-3 text-center font-semibold">
-                    {formatDuration(app.total_time)}
-                  </td>
+            <tbody>
+              {(report.activityLogs || []).map((a, i) => (
+                <tr key={i} className="border-b hover:bg-slate-50">
+                  <td className="p-3">{a.app_name}</td>
+                  <td className="p-3">{formatDate(a.start_time)}</td>
+                  <td className="p-3">{formatDate(a.end_time)}</td>
+                  <td className="p-3">{formatDuration(a.duration)}</td>
                 </tr>
               ))}
-              </tbody>
-            </table>
+            </tbody>
 
-          </div>
-        </div>
-
-        {/* Employee Wise Summary */}
-
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-
-          <h2 className="text-xl font-bold mb-5">
-            Employee Wise Summary
-          </h2>
-
-
-          <div className="overflow-x-auto">
-
-            <table className="min-w-full">
-
-              <thead>
-
-                <tr className="bg-slate-100 border-b">
-
-                  <th className="text-left p-3">
-                    Employee
-                  </th>
-
-                  <th className="text-center p-3">
-                    Active Time
-                  </th>
-
-                  <th className="text-center p-3">
-                    Idle Time
-                  </th>
-
-                  <th className="text-center p-3">
-                    Total Time
-                  </th>
-
-                  <th className="text-center p-3">
-                    Productivity
-                  </th>
-
-                </tr>
-
-              </thead>
-
-
-              <tbody>
-
-
-                {report.user_details.map((user, index) => {
-
-
-                  let active = 0;
-                  let idle = 0;
-
-
-                  user.applications.forEach((app) => {
-
-                    active += Number(app.active_time || 0);
-
-                    idle += Number(app.idle_time || 0);
-
-                  });
-
-
-                  let total = active + idle;
-
-
-                  let productivity =
-                    total > 0
-                      ? Math.round((active / total) * 100)
-                      : 0;
-
-
-
-                  return (
-
-                    <tr
-                      key={index}
-                      className="border-b hover:bg-slate-50"
-                    >
-
-
-                      <td className="p-3 font-semibold">
-
-                        {user.name}
-
-                      </td>
-
-
-
-                      <td className="p-3 text-center">
-
-                        {formatDuration(active)}
-
-                      </td>
-
-
-
-                      <td className="p-3 text-center">
-
-                        {formatDuration(idle)}
-
-                      </td>
-
-
-
-                      <td className="p-3 text-center font-semibold">
-
-                        {formatDuration(total)}
-
-                      </td>
-
-
-
-                      <td className="p-3 text-center">
-
-
-                        <span
-                          className={`px-3 py-1 rounded-full text-sm font-semibold
-                      
-                      ${productivity >= 80
-                              ?
-                              "bg-green-100 text-green-700"
-                              :
-                              productivity >= 50
-                                ?
-                                "bg-yellow-100 text-yellow-700"
-                                :
-                                "bg-red-100 text-red-700"
-
-                            }`
-                          }
-                        >
-
-                          {productivity}%
-
-
-                        </span>
-
-
-                      </td>
-
-
-                    </tr>
-
-                  )
-
-                })}
-
-
-
-              </tbody>
-
-
-            </table>
-
-
-          </div>
-
+          </table>
 
         </div>
 
-        {/* Employee Application Details */}
-
-
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-
-
-          <h2 className="text-xl font-bold mb-5">
-            Employee Application Details
-          </h2>
-
-
-
-          <div className="space-y-4">
-
-
-
-            {
-              report.user_details.map((user, index) => {
-
-
-                return (
-
-                  <div
-                    key={index}
-                    className="border rounded-xl overflow-hidden"
-                  >
-
-
-                    <button
-
-                      onClick={() => {
-
-                        setExpandedUser(
-                          expandedUser === user.user_id
-                            ? null
-                            : user.user_id
-                        )
-
-                      }}
-
-                      className="w-full flex justify-between items-center p-4 bg-slate-50 hover:bg-slate-100"
-
-
-                    >
-
-
-                      <div>
-
-                        <p className="font-semibold text-gray-800">
-
-                          {user.name}
-
-                        </p>
-
-
-                        <p className="text-sm text-gray-500">
-
-                          {
-                            user.applications.length
-                          }
-
-                          Applications
-
-                        </p>
-
-
-                      </div>
-
-
-
-                      <div>
-
-                        <span className="text-indigo-600 font-bold">
-
-                          {
-                            expandedUser === user.user_id
-                              ?
-                              "▲"
-                              :
-                              "▼"
-                          }
-
-
-                        </span>
-
-
-                      </div>
-
-
-                    </button>
-
-
-
-
-
-                    {
-                      expandedUser === user.user_id && (
-
-
-                        <div className="p-4">
-
-
-                          {
-                            user.applications.length === 0
-
-                              ?
-
-                              <div className="text-center text-gray-500 py-5">
-
-                                No Activity Found
-
-                              </div>
-
-
-                              :
-
-                              <div className="overflow-x-auto">
-
-
-                                <table className="min-w-full">
-
-
-                                  <thead>
-
-                                    <tr className="bg-slate-100 border-b">
-
-
-                                      <th className="p-3 text-left">
-
-                                        Application
-
-                                      </th>
-
-
-                                      <th className="p-3 text-center">
-
-                                        Active
-
-                                      </th>
-
-
-                                      <th className="p-3 text-center">
-
-                                        Idle
-
-                                      </th>
-
-
-                                      <th className="p-3 text-center">
-
-                                        Total
-
-                                      </th>
-
-
-                                    </tr>
-
-
-                                  </thead>
-
-
-
-                                  <tbody>
-
-
-                                    {
-                                      user.applications.map((app, i) => (
-
-
-                                        <tr
-                                          key={i}
-                                          className="border-b"
-                                        >
-
-
-                                          <td className="p-3 font-medium">
-
-                                            {
-                                              app.app_name || "Unknown"
-                                            }
-
-                                          </td>
-
-
-                                          <td className="p-3 text-center">
-
-                                            {
-                                              formatDuration(app.active_time)
-                                            }
-
-                                          </td>
-
-
-                                          <td className="p-3 text-center">
-
-                                            {
-                                              formatDuration(app.idle_time)
-                                            }
-
-                                          </td>
-
-
-                                          <td className="p-3 text-center font-semibold">
-
-                                            {
-                                              formatDuration(app.total_time)
-                                            }
-
-                                          </td>
-
-
-                                        </tr>
-
-
-                                      ))
-
-                                    }
-
-
-
-                                  </tbody>
-
-
-                                </table>
-
-
-
-                              </div>
-
-
-                          }
-
-
-                        </div>
-
-
-                      )
-
-
-                    }
-
-
-
-
-                  </div>
-
-
-                )
-
-
-              })
-
-            }
-
-
-
+        {/* ===================== NEW ADDITION (CLEAN WEEKLY VIEW) ===================== */}
+        {report.weeklySummary?.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border p-6">
+            <h2 className="font-bold mb-4">Weekly Summary</h2>
+
+            <div className="space-y-2">
+              {report.weeklySummary.map((w, i) => (
+                <div key={i} className="flex justify-between border-b py-2">
+                  <span>
+                    {new Date(w.week).toLocaleDateString("en-IN")}
+                  </span>
+                  <span>{formatDuration(w.total_time)}</span>
+                </div>
+              ))}
+            </div>
           </div>
-
-
-
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
-
-          <h2 className="text-xl font-bold mb-5">
-            Report Information
-          </h2>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-            <div>
-              <p className="text-sm text-gray-500">
-                Admin Name
-              </p>
-
-              <p className="font-semibold mt-1">
-                {report.admin.name}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-gray-500">
-                Admin Email
-              </p>
-
-              <p className="font-semibold mt-1 break-all">
-                {report.admin.email}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-gray-500">
-                Organization ID
-              </p>
-
-              <p className="font-semibold mt-1">
-                {report.organization.id}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-gray-500">
-                Team ID
-              </p>
-
-              <p className="font-semibold mt-1">
-                {report.team.id}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-gray-500">
-                Report From
-              </p>
-
-              <p className="font-semibold mt-1">
-                {report.report_period.from}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-gray-500">
-                Report To
-              </p>
-
-              <p className="font-semibold mt-1">
-                {report.report_period.to}
-              </p>
-            </div>
-
-          </div>
-
-        </div>
+        )}
 
       </div>
     </div>
-  )
+  );
 };
 
 export default Reports;

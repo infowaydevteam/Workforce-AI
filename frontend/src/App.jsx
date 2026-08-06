@@ -9,6 +9,7 @@ import Organizations from './components/pages/admin/Organizations';
 import Teams from './components/pages/admin/Teams';
 import Reports from './components/pages/admin/Reports';
 import EmployeeDetail from './components/pages/admin/EmployeeDetail';
+import AdminPolicies from './components/pages/admin/AdminPolicies';
 
 const App = () => {
   return (
@@ -21,17 +22,19 @@ const App = () => {
 
         <Route
           element={
-            <ProtectedRoute allowedRoles={["superadmin","admin"]}>
+            <ProtectedRoute allowedRoles={["admin"]}>
               <AdminLayout />
             </ProtectedRoute>
           }
         >
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/employee" element={<Users />} />
+          <Route path="/admin/users" element={<Users />} />
           <Route path="/admin/employee/:id" element={<EmployeeDetail />} />
           <Route path="/admin/organizations" element={<Organizations />} />
-          <Route path="/admin/Teams" element={<Teams />} />
-          <Route path="/admin/Reports" element={<Reports />} />
+          <Route path="/admin/teams" element={<Teams />} />
+          <Route path="/admin/reports" element={<Reports />} />
+          <Route path="/admin/policies" element={<AdminPolicies />} />
         </Route>
 
       </Routes>

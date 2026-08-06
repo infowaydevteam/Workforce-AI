@@ -1,3 +1,0 @@
-D:\IWF\IWF-Agent\IWF-Agent\bin\Release\net10.0-windows\win-x64\publish\IWF-Agent.pdb
-D:\IWF\IWF-Agent\IWF-Agent\bin\Release\net10.0-windows\win-x64\publish\config.json
-D:\IWF\IWF-Agent\IWF-Agent\bin\Release\net10.0-windows\win-x64\publish\IWF-Agent.exe

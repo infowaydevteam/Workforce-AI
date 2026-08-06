@@ -31,7 +31,6 @@ const Login = () => {
       });
 
       const data = await response.json();
-      console.log("user",data)
 
       if (!response.ok) {
         setError(data.message || "Login failed");
@@ -41,21 +40,14 @@ const Login = () => {
       // ✅ Save token
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
-      localStorage.setItem("role", data.user.role);
-      localStorage.setItem(
-        "organization_id",
-        data.user.organization_id
-      );
+      localStorage.setItem("role", JSON.stringify(data.user.role));
 
       setSuccess("Login successful! Redirecting...");
 
       // Redirect after 1 second
       setTimeout(() => {
         setTimeout(() => {
-          if (
-            data.user.role === "superadmin" ||
-            data.user.role === "admin"
-          ) {
+          if (data.user.role === "admin") {
             navigate("/admin");
           }
         }, 1000);

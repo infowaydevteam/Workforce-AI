@@ -83,7 +83,6 @@ const AdminDashboard = () => {
       const data = await res.json();
 
       setStats(data);
-      console.log(data)
     } catch (err) {
       console.log(err);
     }
@@ -142,7 +141,6 @@ const AdminDashboard = () => {
       );
 
       const data = await res.json();
-      console.log("new",data)
 
       setOrgSummary(data);
     } catch (err) {
@@ -394,34 +392,6 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* RECENT ACTIVITIES */}
-          <div className="bg-white p-6 rounded-3xl border shadow-sm">
-            <h2 className="text-lg font-semibold mb-5">
-              Recent Activities
-            </h2>
-
-            <div className="space-y-3 max-h-[400px] overflow-auto">
-              {activities.slice(0, 15).map((activity, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl"
-                >
-                  <div className="w-3 h-3 rounded-full bg-indigo-500"></div>
-
-                  <div>
-                    <p className="font-medium">
-                      {activity.user_name}
-                    </p>
-
-                    <p className="text-sm text-slate-500">
-                      {activity.app_name}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
         </div>
 
         {/* ORGANIZATION PIE */}
@@ -486,8 +456,5 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
-
-
-
 
 
