@@ -191,61 +191,30 @@ const Reports = () => {
       head: [
         [
           "Employee",
-          "Active",
-          "Idle",
-          "Total",
+          "Active Time",
+          "Idle Time",
+          "Working Time",
+          "Productivity Time",
           "Productivity"
         ]
       ],
 
 
-      body:
+      body: report.user_details.map((user) => [
 
-        report.user_details.map((user) => {
+        user.name,
 
+        formatDuration(user.active_time),
 
-          let active = 0;
-          let idle = 0;
+        formatDuration(user.idle_time),
 
+        formatDuration(user.working_time),
 
-          user.applications.forEach((app) => {
+        formatDuration(user.productivity_time),
 
-            active += Number(app.active_time || 0);
+        `${user.top10_productivity}%`
 
-            idle += Number(app.idle_time || 0);
-
-          });
-
-
-
-          let total = active + idle;
-
-
-          let productivity =
-            total > 0
-              ?
-              Math.round((active / total) * 100)
-              :
-              0;
-
-
-
-          return [
-
-            user.name,
-
-            formatDuration(active),
-
-            formatDuration(idle),
-
-            formatDuration(total),
-
-            `${productivity}%`
-
-          ];
-
-
-        })
+      ])
 
     });
 
@@ -271,6 +240,38 @@ const Reports = () => {
         20
       );
 
+      doc.setFontSize(11);
+
+      doc.text(
+        `Working Time : ${formatDuration(user.working_time)}`,
+        14,
+        30
+      );
+
+      doc.text(
+        `Active Time : ${formatDuration(user.active_time)}`,
+        14,
+        37
+      );
+
+      doc.text(
+        `Idle Time : ${formatDuration(user.idle_time)}`,
+        14,
+        44
+      );
+
+      doc.text(
+        `Productivity Time : ${formatDuration(user.productivity_time)}`,
+        14,
+        51
+      );
+
+      doc.text(
+        `Productivity : ${user.top10_productivity}%`,
+        14,
+        58
+      );
+
 
 
       if (user.applications.length === 0) {
@@ -293,7 +294,7 @@ const Reports = () => {
         autoTable(doc, {
 
 
-          startY: 30,
+          startY: 68,
 
 
           head: [
@@ -694,6 +695,9 @@ const Reports = () => {
                   </th>
 
                   <th className="text-center p-3">
+                    Productivity Time
+                  </th>
+                  <th className="text-center p-3">
                     Productivity
                   </th>
 
@@ -704,109 +708,51 @@ const Reports = () => {
 
               <tbody>
 
+                {report.user_details.map((user, index) => (
 
-                {report.user_details.map((user, index) => {
+                  <tr
+                    key={index}
+                    className="border-b hover:bg-slate-50"
+                  >
 
+                    <td className="p-3 font-semibold">
+                      {user.name}
+                    </td>
 
-                  let active = 0;
-                  let idle = 0;
+                    <td className="p-3 text-center">
+                      {formatDuration(user.active_time)}
+                    </td>
 
+                    <td className="p-3 text-center">
+                      {formatDuration(user.idle_time)}
+                    </td>
 
-                  user.applications.forEach((app) => {
+                    <td className="p-3 text-center font-semibold">
+                      {formatDuration(user.working_time)}
+                    </td>
+                    <td className="p-3 text-center font-semibold">
+                      {formatDuration(user.productivity_time)}
+                    </td>
 
-                    active += Number(app.active_time || 0);
+                    <td className="p-3 text-center">
 
-                    idle += Number(app.idle_time || 0);
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-semibold
+            ${user.top10_productivity >= 80
+                            ? "bg-green-100 text-green-700"
+                            : user.top10_productivity >= 50
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                      >
+                        {user.top10_productivity}%
+                      </span>
 
-                  });
+                    </td>
 
+                  </tr>
 
-                  let total = active + idle;
-
-
-                  let productivity =
-                    total > 0
-                      ? Math.round((active / total) * 100)
-                      : 0;
-
-
-
-                  return (
-
-                    <tr
-                      key={index}
-                      className="border-b hover:bg-slate-50"
-                    >
-
-
-                      <td className="p-3 font-semibold">
-
-                        {user.name}
-
-                      </td>
-
-
-
-                      <td className="p-3 text-center">
-
-                        {formatDuration(active)}
-
-                      </td>
-
-
-
-                      <td className="p-3 text-center">
-
-                        {formatDuration(idle)}
-
-                      </td>
-
-
-
-                      <td className="p-3 text-center font-semibold">
-
-                        {formatDuration(total)}
-
-                      </td>
-
-
-
-                      <td className="p-3 text-center">
-
-
-                        <span
-                          className={`px-3 py-1 rounded-full text-sm font-semibold
-                      
-                      ${productivity >= 80
-                              ?
-                              "bg-green-100 text-green-700"
-                              :
-                              productivity >= 50
-                                ?
-                                "bg-yellow-100 text-yellow-700"
-                                :
-                                "bg-red-100 text-red-700"
-
-                            }`
-                          }
-                        >
-
-                          {productivity}%
-
-
-                        </span>
-
-
-                      </td>
-
-
-                    </tr>
-
-                  )
-
-                })}
-
-
+                ))}
 
               </tbody>
 

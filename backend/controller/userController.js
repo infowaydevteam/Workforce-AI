@@ -379,6 +379,174 @@ const getActivitySummary = async (req, res) => {
   }
 };
 
+
+// const getActivitySummary = async (req, res) => {
+
+//     try {
+
+//         const { id } = req.params;
+//         const { date } = req.query;
+
+//         let sessionFilter = `WHERE user_id = $1`;
+//         let activityFilter = `WHERE user_id = $1`;
+//         let idleFilter = `WHERE user_id = $1`;
+
+//         const params = [id];
+
+//         if (date) {
+
+//             sessionFilter += ` AND DATE(login_time) = $2`;
+//             activityFilter += ` AND DATE(start_time) = $2`;
+//             idleFilter += ` AND DATE(start_time) = $2`;
+
+//             params.push(date);
+
+//         }
+
+//         // ===========================
+//         // Working Time
+//         // ===========================
+
+//         const session = await pool.query(
+//             `
+//             SELECT
+
+//                 COUNT(*) AS total_sessions,
+
+//                 COALESCE(
+
+//                     SUM(
+
+//                         CASE
+
+//                             WHEN logout_time IS NULL
+//                             THEN EXTRACT(EPOCH FROM (NOW() - login_time))
+
+//                             ELSE total_duration
+
+//                         END
+
+//                     ),
+
+//                     0
+
+//                 ) AS working_time
+
+//             FROM sessions
+
+//             ${sessionFilter}
+//             `,
+//             params
+//         );
+
+//         // ===========================
+//         // Activity Time
+//         // ===========================
+
+//         const activity = await pool.query(
+//             `
+//             SELECT
+
+//                 COALESCE(
+//                     SUM(duration),
+//                     0
+//                 ) AS activity_time
+
+//             FROM activity_logs
+
+//             ${activityFilter}
+//             `,
+//             params
+//         );
+
+//         // ===========================
+//         // Idle Time
+//         // ===========================
+
+//         const idle = await pool.query(
+//             `
+//             SELECT
+
+//                 COALESCE(
+//                     SUM(duration),
+//                     0
+//                 ) AS idle_time
+
+//             FROM idle_logs
+
+//             ${idleFilter}
+//             `,
+//             params
+//         );
+
+//         let workingTime = Number(session.rows[0].working_time);
+//         let activityTime = Number(activity.rows[0].activity_time);
+//         let idleTime = Number(idle.rows[0].idle_time);
+
+
+//         activityTime = Math.min(activityTime, workingTime);
+
+
+//         idleTime = Math.min(
+//             idleTime,
+//             Math.max(workingTime - activityTime, 0)
+//         );
+
+
+//         const activeTime = Math.max(
+//             activityTime - idleTime,
+//             0
+//         );
+
+//         const offlineTime = Math.max(
+//             workingTime - activeTime - idleTime,
+//             0
+//         );
+
+//         let productivity = 0;
+
+//         if (workingTime > 0) {
+
+//             productivity = Math.round(
+//                 (activeTime / workingTime) * 100
+//             );
+
+//         }
+
+//         res.json({
+
+//             success: true,
+
+//             total_sessions: Number(session.rows[0].total_sessions),
+
+//             total_working_time: workingTime,
+
+//             active_time: activeTime,
+
+//             idle_time: idleTime,
+
+//             offline_time: offlineTime,
+
+//             productivity
+
+//         });
+
+//     } catch (err) {
+
+//         console.log(err);
+
+//         res.status(500).json({
+
+//             success: false,
+
+//             error: err.message
+
+//         });
+
+//     }
+
+// };
+
 const getActivityLogs = async (req, res) => {
   try {
     const { id } = req.params;

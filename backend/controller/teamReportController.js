@@ -1,3 +1,4 @@
+
 const {
     getTeamReport
 } = require("../services/teamReportService");
@@ -57,6 +58,6 @@ const getTeamReportController = async (req, res) => {
 
 module.exports = {
 
-    getTeamReport:getTeamReportController
+    getTeamReport:getTeamReportController,
 
 };
