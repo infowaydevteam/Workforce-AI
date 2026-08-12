@@ -7,7 +7,7 @@ const router = express.Router();
 router.get(
   "/",
   verifyToken,
-  authorizeRole("admin"),
+  authorizeRole("superadmin", "admin"),
   getTeams
 );
 
@@ -15,14 +15,14 @@ router.get(
 router.post(
   "/",
   verifyToken,
-  authorizeRole("admin"),
+  authorizeRole("superadmin", "admin"),
   addTeam
 );
 
 router.put(
   "/:id",
   verifyToken,
-  authorizeRole("admin"),
+  authorizeRole("superadmin", "admin"),
   updateTeam
 );
 
@@ -30,7 +30,7 @@ router.put(
 router.delete(
   "/:id",
   verifyToken,
-  authorizeRole("admin"),
+  authorizeRole("superadmin", "admin"),
   deleteTeam
 );
 
