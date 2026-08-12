@@ -49,6 +49,10 @@ const deleteUser = async (req, res) => {
       "DELETE FROM restricted_alerts WHERE employee_id = $1",
       [id]
     );
+    await client.query(
+      "DELETE FROM alerts WHERE user_id = $1",
+      [id]
+    );
 
     // Activity Logs
     await client.query(
