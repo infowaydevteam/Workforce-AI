@@ -297,8 +297,8 @@ const Users = () => {
           </div>
 
           {/* TABLE */}
-          <div className="bg-white   rounded-3xl  border  border-slate-200 shadow-sm overflow-hidden">
-            <table className="w-full">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-x-auto">
+            <table className="w-full min-w-[1180px]">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="text-left p-4 text-xs uppercase tracking-wider text-slate-500">
