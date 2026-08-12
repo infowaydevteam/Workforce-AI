@@ -82,6 +82,11 @@ const AdminDashboard = () => {
 
       const data = await res.json();
 
+      if (!res.ok) {
+        console.log(data.message || "Dashboard stats fetch failed");
+        return;
+      }
+
       setStats(data);
       console.log(data)
     } catch (err) {
@@ -486,7 +491,6 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
-
 
 
 

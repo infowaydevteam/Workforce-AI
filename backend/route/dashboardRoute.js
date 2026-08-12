@@ -6,7 +6,7 @@ const router = express.Router();
 router.get(
   "/stats",
   verifyToken,
-  authorizeRole("admin"),
+  authorizeRole("superadmin", "admin"),
   getDashboardStats
 );
 
