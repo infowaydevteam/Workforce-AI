@@ -43,6 +43,8 @@ const Card = ({ title, value }) => (
 const Reports = () => {
   const token = localStorage.getItem("token");
 
+  const [orgs, setOrgs] = useState([]);
+  const [organizationId, setOrganizationId] = useState("");
   const [teams, setTeams] = useState([]);
   const [teamId, setTeamId] = useState("");
 
@@ -53,8 +55,27 @@ const Reports = () => {
   const [expandedUser, setExpandedUser] = useState(null);
 
   useEffect(() => {
+    loadOrganizations();
     loadTeams();
   }, []);
+
+  const loadOrganizations = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/organization`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setOrgs(data);
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   const loadTeams = async () => {
     try {
@@ -72,7 +93,22 @@ const Reports = () => {
     }
   };
 
+  const filteredTeams = organizationId
+    ? teams.filter((team) => String(team.organization_id) === String(organizationId))
+    : teams;
+
+  const handleOrganizationChange = (e) => {
+    setOrganizationId(e.target.value);
+    setTeamId("");
+    setReport(null);
+  };
+
   const generateReport = async () => {
+    if (!organizationId) {
+      alert("Please Select Organization");
+      return;
+    }
+
     if (!teamId) {
       alert("Please Select Team");
       return;
@@ -356,15 +392,30 @@ const Reports = () => {
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 grid md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-2xl p-6 grid md:grid-cols-5 gap-4">
+            <select
+              value={organizationId}
+              onChange={handleOrganizationChange}
+              className="border rounded-xl p-3"
+            >
+              <option value="">Select Organization</option>
+
+              {orgs.map((org) => (
+                <option key={org.id} value={org.id}>
+                  {org.name}
+                </option>
+              ))}
+            </select>
+
             <select
               value={teamId}
               onChange={(e) => setTeamId(e.target.value)}
               className="border rounded-xl p-3"
+              disabled={!organizationId}
             >
               <option value="">Select Team</option>
 
-              {teams.map((team) => (
+              {filteredTeams.map((team) => (
                 <option key={team.id} value={team.id}>
                   {team.team_name}
                 </option>
