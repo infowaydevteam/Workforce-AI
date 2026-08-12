@@ -23,6 +23,18 @@ const Users = () => {
   });
 
 
+     const getArrayData = (data) => {
+    if (Array.isArray(data)) return data;
+
+    if (Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data.organizations)) return data.organizations;
+    if (Array.isArray(data.departments)) return data.departments;
+    if (Array.isArray(data.users)) return data.users;
+    if (Array.isArray(data.teams)) return data.teams;
+
+    return [];
+  };
+
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -37,8 +49,20 @@ const Users = () => {
       );
 
       const data = await response.json();
-      console.log(data);
-      setUsers(data);
+
+      console.log("Users API:", data);
+
+      const userList = Array.isArray(data)
+        ? data
+        : Array.isArray(data.data)
+          ? data.data
+          : Array.isArray(data.users)
+            ? data.users
+            : Array.isArray(data.data?.users)
+              ? data.data.users
+              : [];
+
+      setUsers(userList);
     } catch (error) {
       console.error(error);
     }
@@ -59,9 +83,24 @@ const Users = () => {
       );
 
       const data = await res.json();
-      setOrgs(data);
+
+      console.log("Organizations API:", data);
+
+      if (Array.isArray(data)) {
+        setOrgs(data);
+      } else if (Array.isArray(data.data)) {
+        setOrgs(data.data);
+      } else if (Array.isArray(data.organizations)) {
+        setOrgs(data.organizations);
+      } else if (Array.isArray(data.data?.organizations)) {
+        setOrgs(data.data.organizations);
+      } else {
+        console.error("Invalid organizations response:", data);
+        setOrgs([]);
+      }
     } catch (err) {
-      console.log(err);
+      console.error("Failed to fetch organizations:", err);
+      setOrgs([]);
     }
   };
 
@@ -81,13 +120,25 @@ const Users = () => {
 
       const data = await res.json();
 
-      const filtered = data.filter(
-        (t) => String(t.organization_id) === String(orgId)
+      const teamList = Array.isArray(data)
+        ? data
+        : Array.isArray(data.data)
+          ? data.data
+          : Array.isArray(data.teams)
+            ? data.teams
+            : Array.isArray(data.data?.teams)
+              ? data.data.teams
+              : [];
+
+      const filtered = teamList.filter(
+        (team) =>
+          String(team.organization_id) === String(orgId)
       );
 
       setTeams(filtered);
     } catch (err) {
-      console.log(err);
+      console.error("Failed to fetch teams:", err);
+      setTeams([]);
     }
   };
 
@@ -148,69 +199,69 @@ const Users = () => {
     fetchTeamsByOrg(orgId);
   };
 
-useEffect(() => {
-  if (showModal && role === "admin") {
-    handleOrgChange({
-      target: {
-        value: user.organization_id,
-      },
-    });
-
-    setFormData((prev) => ({
-      ...prev,
-      role: "employee",
-      organization_id: user.organization_id,
-      team_id: user.team_id, 
-    }));
-  }
-}, [showModal]);
-
-const handleAddUser = async (e) => {
-  e.preventDefault();
-
-  const payload = {
-    ...formData,
-  };
-
-  if (role !== "superadmin") {
-    payload.role = "employee"; 
-    payload.organization_id = user.organization_id;
-    payload.team_id = user.team_id; 
-  }
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      setShowModal(false);
-
-      setFormData({
-        name: "",
-        email: "",
-        password: "",
-        role: "employee",
-        organization_id: "",
-        team_id: "",
+  useEffect(() => {
+    if (showModal && role === "admin") {
+      handleOrgChange({
+        target: {
+          value: user.organization_id,
+        },
       });
 
-      fetchUsers();
-
-      alert("User added successfully");
-    } else {
-      alert(data.message);
+      setFormData((prev) => ({
+        ...prev,
+        role: "employee",
+        organization_id: user.organization_id,
+        team_id: user.team_id,
+      }));
     }
-  } catch (error) {
-    console.error(error);
-  }
-};
+  }, [showModal]);
+
+  const handleAddUser = async (e) => {
+    e.preventDefault();
+
+    const payload = {
+      ...formData,
+    };
+
+    if (role !== "superadmin") {
+      payload.role = "employee";
+      payload.organization_id = user.organization_id;
+      payload.team_id = user.team_id;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setShowModal(false);
+
+        setFormData({
+          name: "",
+          email: "",
+          password: "",
+          role: "employee",
+          organization_id: "",
+          team_id: "",
+        });
+
+        fetchUsers();
+
+        alert("User added successfully");
+      } else {
+        alert(data.message);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   return (
     <>

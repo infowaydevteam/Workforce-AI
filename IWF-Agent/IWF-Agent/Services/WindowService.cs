@@ -30,13 +30,19 @@ public class WindowService
             if (handle == IntPtr.Zero)
                 return "Unknown";
 
-            GetWindowThreadProcessId(handle, out uint processId);
+            GetWindowThreadProcessId(
+                handle,
+                out uint processId
+            );
 
-            Process process = Process.GetProcessById((int)processId);
+            Process process =
+                Process.GetProcessById((int)processId);
 
-            return process.ProcessName switch
+            string appName = process.ProcessName switch
             {
                 "chrome" => "Google Chrome",
+                "msedge" => "Microsoft Edge",
+                "firefox" => "Mozilla Firefox",
                 "Code" => "Visual Studio Code",
                 "EXCEL" => "Microsoft Excel",
                 "WINWORD" => "Microsoft Word",
@@ -44,6 +50,35 @@ public class WindowService
                 "Teams" => "Microsoft Teams",
                 _ => process.ProcessName
             };
+
+            string title = GetActiveWindowTitle();
+
+            // Browser ke liye title bhi app_name me add hoga
+            if (
+                (
+                    process.ProcessName.Equals(
+                        "chrome",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                    ||
+                    process.ProcessName.Equals(
+                        "msedge",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                    ||
+                    process.ProcessName.Equals(
+                        "firefox",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                &&
+                !string.IsNullOrWhiteSpace(title)
+            )
+            {
+                return $"{appName} - {title}";
+            }
+
+            return appName;
         }
         catch
         {
@@ -65,7 +100,11 @@ public class WindowService
             if (handle == IntPtr.Zero)
                 return "";
 
-            if (GetWindowText(handle, buffer, nChars) > 0)
+            if (GetWindowText(
+                    handle,
+                    buffer,
+                    nChars
+                ) > 0)
             {
                 return buffer.ToString();
             }
@@ -77,52 +116,4 @@ public class WindowService
             return "";
         }
     }
-
- public static string GetDisplayName()
-{
-    string process = GetActiveWindow();
-    string title = GetActiveWindowTitle();
-
-    if (string.IsNullOrWhiteSpace(title))
-        return process;
-
-    // Browser
-if (
-    process.Equals("Google Chrome", StringComparison.OrdinalIgnoreCase) ||
-    process.Equals("Brave", StringComparison.OrdinalIgnoreCase) ||
-    process.Equals("Microsoft Edge", StringComparison.OrdinalIgnoreCase) ||
-    process.Equals("Firefox", StringComparison.OrdinalIgnoreCase)
-)
-{
-    string cleanTitle = title
-    .Replace(" - Google Chrome", "", StringComparison.OrdinalIgnoreCase)
-    .Replace(" - Brave", "", StringComparison.OrdinalIgnoreCase)
-    .Replace(" - Microsoft Edge", "", StringComparison.OrdinalIgnoreCase)
-    .Replace(" - Mozilla Firefox", "", StringComparison.OrdinalIgnoreCase)
-    .Trim();
-
-while (cleanTitle.StartsWith("("))
-{
-    int end = cleanTitle.IndexOf(")");
-    if (end == -1)
-        break;
-
-    cleanTitle = cleanTitle.Substring(end + 1).Trim();
-}
-
-// Check tracked websites first
-string matchedWebsite =
-    TrackedWebsiteService.GetMatchedWebsite(cleanTitle);
-
-if (!string.IsNullOrEmpty(matchedWebsite))
-{
-    return matchedWebsite;
-}
-
-// Fallback
-return $"{process} - {cleanTitle}";
-}
-
-    return process;
-}
 }

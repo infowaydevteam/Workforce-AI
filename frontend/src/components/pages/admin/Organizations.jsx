@@ -1,15 +1,34 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Trash2,  Building2, } from "lucide-react";
+import { Plus, Trash2, Building2, Settings } from "lucide-react";
 import { API_BASE_URL } from "../../../../config";
+import { useNavigate } from "react-router-dom";
 
 const Organizations = () => {
   const [orgs, setOrgs] = useState([]);
+  const [plans, setPlans] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const navigate = useNavigate();
 
   const [form, setForm] = useState({
     name: "",
     description: "",
+    subscription_plan_id: "",
+    timezone: "America/Los_Angeles",
+    working_start: "09:00",
+    working_end: "17:00",
   });
+
+   const getArrayData = (data) => {
+    if (Array.isArray(data)) return data;
+
+    if (Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data.organizations)) return data.organizations;
+    if (Array.isArray(data.departments)) return data.departments;
+    if (Array.isArray(data.users)) return data.users;
+    if (Array.isArray(data.teams)) return data.teams;
+
+    return [];
+  };
 
   // Fetch organizations
 const fetchOrgs = async () => {
@@ -26,14 +45,61 @@ const fetchOrgs = async () => {
     );
 
     const data = await res.json();
-    setOrgs(data);
+
+    console.log("Organizations API response:", data);
+
+    if (Array.isArray(data)) {
+      setOrgs(data);
+    } else if (Array.isArray(data.data)) {
+      setOrgs(data.data);
+    } else if (Array.isArray(data.organizations)) {
+      setOrgs(data.organizations);
+    } else {
+      console.error("Organizations is not an array:", data);
+      setOrgs([]);
+    }
   } catch (err) {
-    console.log(err);
+    console.error("Failed to fetch organizations:", err);
+    setOrgs([]);
+  }
+};
+
+const fetchPlans = async () => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(
+      `${API_BASE_URL}/api/admin-workflow/subscription-plans`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await res.json();
+
+    console.log("Plans API response:", data);
+
+    if (Array.isArray(data)) {
+      setPlans(data);
+    } else if (Array.isArray(data.data)) {
+      setPlans(data.data);
+    } else if (Array.isArray(data.plans)) {
+      setPlans(data.plans);
+    } else {
+      setPlans([]);
+    }
+  } catch (err) {
+    console.error("Failed to fetch plans:", err);
+    setPlans([]);
   }
 };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchOrgs();
+    fetchPlans();
   }, []);
 
   // Add organization
@@ -60,6 +126,10 @@ const handleAdd = async (e) => {
       setForm({
         name: "",
         description: "",
+        subscription_plan_id: "",
+        timezone: "America/Los_Angeles",
+        working_start: "09:00",
+        working_end: "17:00",
       });
 
       fetchOrgs();
@@ -142,6 +212,14 @@ const handleDelete = async (id) => {
                   Description
                 </th>
 
+                <th className="text-left p-4 text-xs uppercase tracking-wider text-slate-500">
+                  Plan
+                </th>
+
+                <th className="text-left p-4 text-xs uppercase tracking-wider text-slate-500">
+                  Timezone
+                </th>
+
                 <th className="text-center p-4 text-xs uppercase tracking-wider text-slate-500">
                   Action
                 </th>
@@ -182,14 +260,28 @@ const handleDelete = async (id) => {
                   <td className="p-4 text-slate-600">
                     {org.description}
                   </td>
+                  <td className="p-4 text-slate-600">
+                    {org.subscription_plan_name || "-"}
+                  </td>
+                  <td className="p-4 text-slate-600">
+                    {org.timezone || "-"}
+                  </td>
                   <td className="p-4 text-center">
-                    <button
-                      onClick={() =>
-                        handleDelete(org.id)
-                      }
-                      className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all" >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex justify-center gap-2">
+                      <button
+                        onClick={() => navigate("/admin/policies")}
+                        className="p-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all"
+                      >
+                        <Settings size={18} />
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleDelete(org.id)
+                        }
+                        className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all" >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -234,6 +326,62 @@ const handleDelete = async (id) => {
                     })
                   }
                 />
+
+                <select
+                  className="w-full border border-slate-300 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
+                  value={form.subscription_plan_id}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      subscription_plan_id: e.target.value,
+                    })
+                  }
+                >
+                  <option value="">Select Subscription Plan</option>
+                  {plans.map((plan) => (
+                    <option key={plan.id} value={plan.id}>
+                      {plan.name}
+                    </option>
+                  ))}
+                </select>
+
+                <input
+                  type="text"
+                  placeholder="Timezone"
+                  className="w-full border border-slate-300 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
+                  value={form.timezone}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      timezone: e.target.value,
+                    })
+                  }
+                />
+
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <input
+                    type="time"
+                    className="w-full border border-slate-300 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={form.working_start}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        working_start: e.target.value,
+                      })
+                    }
+                  />
+                  <input
+                    type="time"
+                    className="w-full border border-slate-300 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={form.working_end}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        working_end: e.target.value,
+                      })
+                    }
+                  />
+                </div>
 
                 <div className="flex justify-end gap-3">
                   <button

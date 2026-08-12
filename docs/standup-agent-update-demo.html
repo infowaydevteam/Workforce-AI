@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IWF Agent Update Demo</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #172033;
+      background: #f5f7fb;
+    }
+    body {
+      margin: 0;
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 32px;
+    }
+    header {
+      padding: 28px 0 20px;
+      border-bottom: 1px solid #d9dfeb;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 34px;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+    }
+    p {
+      line-height: 1.55;
+      margin: 0 0 12px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 22px;
+    }
+    .panel {
+      background: #fff;
+      border: 1px solid #d9dfeb;
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .wide {
+      grid-column: 1 / -1;
+    }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .step {
+      border: 1px solid #d9dfeb;
+      border-radius: 8px;
+      padding: 14px;
+      background: #fbfcff;
+      min-height: 132px;
+    }
+    .num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #174ea6;
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    code, pre {
+      font-family: Menlo, Consolas, monospace;
+      background: #eff3f8;
+      border-radius: 6px;
+    }
+    code {
+      padding: 2px 5px;
+      overflow-wrap: anywhere;
+    }
+    pre {
+      padding: 12px;
+      overflow: auto;
+      line-height: 1.45;
+      margin: 10px 0 0;
+    }
+    a {
+      color: #0b5cab;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .links a {
+      display: block;
+      padding: 10px 12px;
+      border: 1px solid #c8d2e3;
+      border-radius: 6px;
+      margin-top: 10px;
+      background: #f9fbff;
+    }
+    .status {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .pill {
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 13px;
+      font-weight: 700;
+      background: #e8f1ff;
+      color: #174ea6;
+    }
+    .talk {
+      font-size: 15px;
+    }
+    @media (max-width: 900px) {
+      .grid, .steps {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>IWF Monitoring Agent Update Demo</h1>
+      <p>Standup goal: show that employees install the monitoring agent once, then new agent versions are distributed through backend manifest based auto-update.</p>
+      <div class="status">
+        <span class="pill">Windows package ready</span>
+        <span class="pill">macOS package ready</span>
+        <span class="pill">Checksum verified by agent</span>
+        <span class="pill">Online / Idle / Offline preserved</span>
+      </div>
+    </header>
+
+    <section class="panel wide">
+      <h2>Demo Flow</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="num">1</div>
+          <p><strong>Admin creates employee</strong></p>
+          <p class="talk">System generates an <code>agent_token</code> for that employee.</p>
+        </div>
+        <div class="step">
+          <div class="num">2</div>
+          <p><strong>Employee downloads agent</strong></p>
+          <p class="talk">The token download page offers Windows and macOS packages.</p>
+        </div>
+        <div class="step">
+          <div class="num">3</div>
+          <p><strong>Installer writes config</strong></p>
+          <p class="talk">Installer writes token and API base URL, then starts the agent.</p>
+        </div>
+        <div class="step">
+          <div class="num">4</div>
+          <p><strong>Agent runs in background</strong></p>
+          <p class="talk">Agent reports <code>Online</code>, <code>Idle</code>, or <code>Offline</code>.</p>
+        </div>
+        <div class="step">
+          <div class="num">5</div>
+          <p><strong>Auto-update</strong></p>
+          <p class="talk">Agent checks manifest, downloads package, validates SHA256, applies update, and restarts.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>Built Demo Packages</h2>
+        <p>These are already generated in this workspace.</p>
+        <div class="links">
+          <a href="../backend/agent-updates/windows/1.0.0/IWF-Agent-Setup-1.0.0.zip">Windows: IWF-Agent-Setup-1.0.0.zip</a>
+          <a href="../backend/agent-updates/macos/1.0.0/IWF-Agent-1.0.0.pkg">macOS: IWF-Agent-1.0.0.pkg</a>
+          <a href="agent-update-release.md">Release docs</a>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Backend APIs to Mention</h2>
+        <p><code>GET /api/agent/download-agent/:token</code></p>
+        <p><code>GET /api/agent/download-agent/:token?platform=windows</code></p>
+        <p><code>GET /api/agent/download-agent/:token?platform=macos</code></p>
+        <p><code>GET /api/agent/install-config/:token</code></p>
+        <p><code>GET /api/agent/updates?platform=...&version=...&agent_token=...</code></p>
+      </section>
+
+      <section class="panel wide">
+        <h2>Manifest Snapshot</h2>
+        <pre>{
+  "windows": {
+    "latest_version": "1.0.0",
+    "package_name": "IWF-Agent-Setup-1.0.0.zip",
+    "checksum_sha256": "6ff1ffc6ccff725e78556471df051078e15fd334fc8a895de3bb745bb8f1c20a"
+  },
+  "macos": {
+    "latest_version": "1.0.0",
+    "package_name": "IWF-Agent-1.0.0.pkg",
+    "checksum_sha256": "679b2304509d37a77be2d2fa2de338a279f90cebc2430ddc5b305522e2228e53"
+  }
+}</pre>
+      </section>
+
+      <section class="panel">
+        <h2>Release Commands</h2>
+        <pre>node scripts/build-windows-agent-package.mjs 1.1.0 Release
+packaging/macos/build-macos-package.sh 1.1.0 "" "http://localhost:5001"
+
+node scripts/update-agent-manifest.mjs windows 1.1.0 \
+  backend/agent-updates/windows/1.1.0/IWF-Agent-Setup-1.1.0.zip \
+  "Windows agent 1.1.0"</pre>
+      </section>
+
+      <section class="panel">
+        <h2>Talk Track</h2>
+        <p class="talk">"Before this work, every new agent feature required employees to uninstall and reinstall. Now we publish a versioned package and update the manifest. Existing agents detect the new version, download the right platform package, verify checksum, and apply it without employee reinstall."</p>
+        <p class="talk">"This is not instant code push. We still do a release. The improvement is that the release is distributed by the agent automatically."</p>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

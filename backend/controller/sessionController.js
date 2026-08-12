@@ -1,31 +1,6 @@
 const pool = require("../db");
 
 // START SESSION
-// const startSession = async (req, res) => {
-//   try {
-//     const { user_id } = req.body;
-
-//     const result = await pool.query(
-//       `INSERT INTO sessions (user_id, login_time)
-//        VALUES ($1, NOW())
-//        RETURNING *`,
-//       [user_id]
-//     );
-
-//     await pool.query(
-//       `UPDATE users
-//    SET status = 'Online',
-//        last_active = NOW()
-//    WHERE id = $1`,
-//       [user_id]
-//     );
-
-//     res.json({ success: true, session: result.rows[0] });
-//   } catch (err) {
-//     res.status(500).json({ success: false, error: err.message });
-//   }
-// };
-
 const startSession = async (req, res) => {
   try {
     const { user_id } = req.body;

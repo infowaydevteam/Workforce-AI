@@ -6,9 +6,15 @@ class Program
 {
     static async Task Main(string[] args)
     {
+        using CancellationTokenSource cts = new();
+
         try
         {
             Console.WriteLine("IWF Background Agent Started...");
+
+            // ==========================
+            // Read Saved Token
+            // ==========================
 
             if (!ConfigService.IsActivated())
             {
@@ -32,69 +38,104 @@ class Program
                 $"Logged User ID: {UserContext.UserId}"
             );
 
-            // START SESSION
+            StartupService.Register();
+
+            if (await AgentUpdateService.CheckForUpdates())
+            {
+                return;
+            }
+
+            AgentUpdateService.StartPeriodicChecks();
+
+            var policyConfig =
+                await ApiService.GetAgentPolicyConfig();
+
+            ActivityService.Configure(policyConfig);
+
+            // ==========================
+            // Start Session
+            // ==========================
+
             await ApiService.StartSession();
-            Console.WriteLine("START SESSION API CALL");
 
-            // Load Restricted Apps / Websites
-var restrictedItems =
-    await ApiService.GetRestrictedItems();
 
-if (restrictedItems != null &&
-    restrictedItems.Success)
-{
-    RestrictedAppService.Load(
-        restrictedItems.Apps
-    );
+            // ==========================
+            // Load Restricted Items
+            // ==========================
 
-    RestrictedSiteService.Load(
-        restrictedItems.Sites
-    );
-}
-else
-{
-    Console.WriteLine(
-        "Failed to load restricted items."
-    );
-}
+            var restrictedItems =
+                await ApiService.GetRestrictedItems();
 
-// Load Tracked Websites
-await ApiService.GetTrackedWebsites();
+            if (restrictedItems != null &&
+                restrictedItems.Success)
+            {
+                RestrictedAppService.Load(
+                    restrictedItems.Apps
+                );
 
-// Start Services
-ActivityService.Start();
+                RestrictedSiteService.Load(
+                    restrictedItems.Sites
+                );
+            }
+            else
+            {
+                Console.WriteLine(
+                    "Failed to load restricted items."
+                );
+            }
 
-Console.WriteLine(
-    "Activity Service Started"
-);
+            // ==========================
+            // Start Monitoring
+            // ==========================
 
+            ActivityService.Start();
 LockService.Start();
+            // ==========================
+            // Heartbeat
+            // ==========================
 
-            // HEARTBEAT
             _ = Task.Run(async () =>
             {
-                while (true)
+                try
                 {
-                    try
+                    while (!cts.Token.IsCancellationRequested)
                     {
                         await ApiService.SendHeartbeat();
 
-                        Console.WriteLine(
-                            $"Heartbeat Sent : {DateTime.Now}"
+                        await Task.Delay(
+                            TimeSpan.FromSeconds(10),
+                            cts.Token
                         );
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(
-                            $"Heartbeat Error : {ex.Message}"
-                        );
-                    }
-
-                    await Task.Delay(10000);
                 }
-            });
+                catch (OperationCanceledException)
+                {
+                    Console.WriteLine(
+                        "Heartbeat stopped."
+                    );
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(
+                        $"Heartbeat Error: {ex.Message}"
+                    );
+                }
+            }, cts.Token);
 
-            await Task.Delay(Timeout.Infinite);
+            // ==========================
+            // Keep Agent Running
+            // ==========================
+
+            await Task.Delay(
+                Timeout.Infinite,
+                cts.Token
+            );
+        }
+        catch (OperationCanceledException)
+        {
+            Console.WriteLine(
+                "Agent cancellation requested."
+            );
         }
         catch (Exception ex)
         {
@@ -102,14 +143,15 @@ LockService.Start();
         }
         finally
         {
-            Console.WriteLine(
-                "Stopping Activity Service..."
-            );
+            // Stop heartbeat
+            cts.Cancel();
 
-            LockService.Stop();
-
+            // Stop activity tracking
             await ActivityService.Stop();
-            
+
+            Console.WriteLine(
+                "Agent shutdown completed."
+            );
         }
     }
 }

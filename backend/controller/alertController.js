@@ -172,48 +172,6 @@ const sendRestrictedAlert = async (req, res) => {
     }
 };
 
-// const sendIdleAlert = async (req, res) => {
-
-//     try {
-
-//         const { userId, idleDuration } = req.body;
-
-//         if (!userId || idleDuration == null) {
-
-//             return res.status(400).json({
-
-//                 success: false,
-
-//                 message: "userId and idleDuration are required."
-
-//             });
-
-//         }
-
-//         const result = await alertService.createIdleAlert(
-//             userId,
-//             idleDuration
-//         );
-
-//         return res.status(200).json(result);
-
-//     }
-//     catch (err) {
-
-//         console.error("Idle Alert Error:", err);
-
-//         return res.status(500).json({
-
-//             success: false,
-
-//             message: err.message
-
-//         });
-
-//     }
-
-// };
-
 const sendIdleAlert = async (req, res) => {
 
     try {

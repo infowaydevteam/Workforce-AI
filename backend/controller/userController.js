@@ -1,69 +1,37 @@
 const pool = require("../db");
 
 // Get All Users
-
 const getUsers = async (req, res) => {
   try {
-    let result;
-
-    if (req.user.role === "superadmin") {
-      result = await pool.query(`
-        SELECT
-          users.id,
-          users.name,
-          users.email,
-          users.role,
-          users.status,
-          organizations.name AS organization_name,
-          teams.name AS team_name
-        FROM users
-        LEFT JOIN organizations
-          ON users.organization_id = organizations.id
-        LEFT JOIN teams
-          ON users.team_id = teams.id
-        WHERE users.role != 'superadmin'
-        ORDER BY users.id DESC
-      `);
-
-    } else if (req.user.role === "admin") {
-
-      result = await pool.query(
-        `
-        SELECT
-          users.id,
-          users.name,
-          users.email,
-          users.role,
-          users.status,
-          organizations.name AS organization_name,
-          teams.name AS team_name
-        FROM users
-        LEFT JOIN organizations
-          ON users.organization_id = organizations.id
-        LEFT JOIN teams
-          ON users.team_id = teams.id
-        WHERE users.organization_id = $1
-          AND users.role NOT IN ('superadmin', 'admin')
-        ORDER BY users.id DESC
-        `,
-        [req.user.organization_id]
-      );
-
-    } else {
-      return res.status(403).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
+    const result = await pool.query(`
+     SELECT
+  users.id,
+  users.name,
+  users.email,
+  users.role,
+  users.status,
+  users.agent_token,
+  users.organization_id,
+  users.team_id,
+  users.manager_id,
+  organizations.name AS organization_name,
+  teams.name AS team_name,
+  managers.name AS manager_name
+FROM users
+LEFT JOIN organizations
+  ON users.organization_id = organizations.id
+LEFT JOIN teams
+  ON users.team_id = teams.id
+LEFT JOIN users managers
+  ON users.manager_id = managers.id
+WHERE users.role != 'superadmin'
+ORDER BY users.id DESC
+    `);
 
     res.status(200).json(result.rows);
-
   } catch (error) {
     console.error(error);
-
-    res.status(500).json({
-      message: "Failed to fetch users",
-    });
+    res.status(500).json({ message: "Failed to fetch users" });
   }
 };
 
@@ -128,71 +96,58 @@ const deleteUser = async (req, res) => {
   }
 };
 
-// const updateStatus = async (req, res) => {
-//   try {
-//     const { user_id, status } = req.body;
-//     console.log("STATUS REQUEST:", req.body);
+const updateUserAssignment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, organization_id, team_id, manager_id } = req.body;
 
-//     const formattedStatus =
-//       status.charAt(0).toUpperCase() +
-//       status.slice(1).toLowerCase();
+    const result = await pool.query(
+      `UPDATE users
+       SET role = COALESCE($1, role),
+           organization_id = $2,
+           team_id = $3,
+           manager_id = $4
+       WHERE id = $5
+       RETURNING id, name, email, role, organization_id, team_id, manager_id`,
+      [
+        role || null,
+        organization_id || null,
+        team_id || null,
+        manager_id || null,
+        id,
+      ]
+    );
 
-//     const result = await pool.query(
-//       `UPDATE users
-//        SET status = $1,
-//            last_active = NOW()
-//        WHERE id = $2
-//        RETURNING *`,
-//       [formattedStatus, user_id]
-//     );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-//     res.json({
-//       success: true,
-//       data: result.rows[0],
-//     });
-//   } catch (err) {
-//     res.status(500).json({
-//       success: false,
-//       error: err.message,
-//     });
-//   }
-// };
-
-
-
-
-// controller
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to update user assignment" });
+  }
+};
 
 const updateStatus = async (req, res) => {
   try {
     const { user_id, status } = req.body;
-
     console.log("STATUS REQUEST:", req.body);
 
     const formattedStatus =
       status.charAt(0).toUpperCase() +
       status.slice(1).toLowerCase();
+    const normalizedStatus =
+      formattedStatus === "Paused" ? "Offline" : formattedStatus;
 
-    let result;
-
-    if (formattedStatus === "Online") {
-      result = await pool.query(
-        `UPDATE users
-         SET status = $1,
-             last_active = NOW()
-         WHERE id = $2
-         RETURNING *`,
-        [formattedStatus, user_id]
-      );
-    } else {
-      result = await pool.query(
-        `UPDATE users
-         SET status = $1
-         WHERE id = $2
-         RETURNING *`,
-        [formattedStatus, user_id]
-      );
-    }
+    const result = await pool.query(
+      `UPDATE users
+       SET status = $1,
+           last_active = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [normalizedStatus, user_id]
+    );
 
     res.json({
       success: true,
@@ -206,20 +161,20 @@ const updateStatus = async (req, res) => {
   }
 };
 
-
-
+// controller
 const getEmployeeById = async (req, res) => {
   try {
     const { id } = req.params;
 
     const result = await pool.query(
       `
-      SELECT 
+      SELECT
         u.id,
         u.name,
         u.email,
         u.role,
         u.status,
+        u.agent_token,
         u.last_active,
         o.name AS organization_name,
         t.name AS team_name
@@ -277,7 +232,7 @@ const getAppUsage = async (req, res) => {
     const { date } = req.query;
 
     let query = `
-      SELECT app_name, SUM(duration) AS total_duration
+      SELECT app_name, SUM(GREATEST(duration, 0)) AS total_duration
       FROM activity_logs
       WHERE user_id = $1
     `;
@@ -306,246 +261,45 @@ const getActivitySummary = async (req, res) => {
 
     let sessionFilter = `WHERE user_id = $1`;
     let idleFilter = `WHERE user_id = $1`;
-    let activityFilter = `WHERE user_id = $1`;
 
     const params = [id];
 
     if (date) {
       sessionFilter += ` AND DATE(login_time) = $2`;
       idleFilter += ` AND DATE(start_time) = $2`;
-      activityFilter += ` AND DATE(start_time) = $2`;
-
       params.push(date);
     }
 
-    // Working Time (Completed + Running Sessions)
-    const session = await pool.query(
-  `
-  SELECT
-    COUNT(*) AS total_sessions,
-
-    COALESCE(
-      SUM(
-        CASE
-          WHEN logout_time IS NULL
-          THEN EXTRACT(EPOCH FROM (NOW() - login_time))
-          ELSE total_duration
-        END
-      ),
-      0
-    ) AS total_working_time
-
-  FROM sessions
-  ${sessionFilter}
-  `,
-  params
-);
-
-    // Idle Time
-    const idle = await pool.query(
-      `
+    const session = await pool.query(`
       SELECT
-        COALESCE(SUM(duration),0) AS idle_time
+        SUM(GREATEST(total_duration, 0)) AS total_working_time,
+        COUNT(*) AS total_sessions
+      FROM sessions
+      ${sessionFilter}
+    `, params);
+
+    const idle = await pool.query(`
+      SELECT SUM(GREATEST(duration, 0)) AS idle_time
       FROM idle_logs
       ${idleFilter}
-      `,
-      params
-    );
+    `, params);
 
-    // Active Time
-    const active = await pool.query(
-      `
-      SELECT
-        COALESCE(SUM(duration),0) AS active_time
+    const active = await pool.query(`
+      SELECT SUM(GREATEST(duration, 0)) AS active_time
       FROM activity_logs
-      ${activityFilter}
-      `,
-      params
-    );
+      ${idleFilter}
+    `, params);
 
     res.json({
-      total_sessions: Number(session.rows[0].total_sessions),
-      total_working_time: Number(session.rows[0].total_working_time),
-      active_time: Number(active.rows[0].active_time),
-      idle_time: Number(idle.rows[0].idle_time),
+      total_sessions: session.rows[0].total_sessions || 0,
+      total_working_time: session.rows[0].total_working_time || 0,
+      active_time: active.rows[0].active_time || 0,
+      idle_time: idle.rows[0].idle_time || 0,
     });
-
   } catch (err) {
-    console.log(err);
-    res.status(500).json({
-      success: false,
-      error: err.message,
-    });
+    res.status(500).json({ error: err.message });
   }
 };
-
-
-// const getActivitySummary = async (req, res) => {
-
-//     try {
-
-//         const { id } = req.params;
-//         const { date } = req.query;
-
-//         let sessionFilter = `WHERE user_id = $1`;
-//         let activityFilter = `WHERE user_id = $1`;
-//         let idleFilter = `WHERE user_id = $1`;
-
-//         const params = [id];
-
-//         if (date) {
-
-//             sessionFilter += ` AND DATE(login_time) = $2`;
-//             activityFilter += ` AND DATE(start_time) = $2`;
-//             idleFilter += ` AND DATE(start_time) = $2`;
-
-//             params.push(date);
-
-//         }
-
-//         // ===========================
-//         // Working Time
-//         // ===========================
-
-//         const session = await pool.query(
-//             `
-//             SELECT
-
-//                 COUNT(*) AS total_sessions,
-
-//                 COALESCE(
-
-//                     SUM(
-
-//                         CASE
-
-//                             WHEN logout_time IS NULL
-//                             THEN EXTRACT(EPOCH FROM (NOW() - login_time))
-
-//                             ELSE total_duration
-
-//                         END
-
-//                     ),
-
-//                     0
-
-//                 ) AS working_time
-
-//             FROM sessions
-
-//             ${sessionFilter}
-//             `,
-//             params
-//         );
-
-//         // ===========================
-//         // Activity Time
-//         // ===========================
-
-//         const activity = await pool.query(
-//             `
-//             SELECT
-
-//                 COALESCE(
-//                     SUM(duration),
-//                     0
-//                 ) AS activity_time
-
-//             FROM activity_logs
-
-//             ${activityFilter}
-//             `,
-//             params
-//         );
-
-//         // ===========================
-//         // Idle Time
-//         // ===========================
-
-//         const idle = await pool.query(
-//             `
-//             SELECT
-
-//                 COALESCE(
-//                     SUM(duration),
-//                     0
-//                 ) AS idle_time
-
-//             FROM idle_logs
-
-//             ${idleFilter}
-//             `,
-//             params
-//         );
-
-//         let workingTime = Number(session.rows[0].working_time);
-//         let activityTime = Number(activity.rows[0].activity_time);
-//         let idleTime = Number(idle.rows[0].idle_time);
-
-
-//         activityTime = Math.min(activityTime, workingTime);
-
-
-//         idleTime = Math.min(
-//             idleTime,
-//             Math.max(workingTime - activityTime, 0)
-//         );
-
-
-//         const activeTime = Math.max(
-//             activityTime - idleTime,
-//             0
-//         );
-
-//         const offlineTime = Math.max(
-//             workingTime - activeTime - idleTime,
-//             0
-//         );
-
-//         let productivity = 0;
-
-//         if (workingTime > 0) {
-
-//             productivity = Math.round(
-//                 (activeTime / workingTime) * 100
-//             );
-
-//         }
-
-//         res.json({
-
-//             success: true,
-
-//             total_sessions: Number(session.rows[0].total_sessions),
-
-//             total_working_time: workingTime,
-
-//             active_time: activeTime,
-
-//             idle_time: idleTime,
-
-//             offline_time: offlineTime,
-
-//             productivity
-
-//         });
-
-//     } catch (err) {
-
-//         console.log(err);
-
-//         res.status(500).json({
-
-//             success: false,
-
-//             error: err.message
-
-//         });
-
-//     }
-
-// };
 
 const getActivityLogs = async (req, res) => {
   try {
@@ -557,7 +311,7 @@ const getActivityLogs = async (req, res) => {
         app_name,
         MIN(start_time) AS start_time,
         MAX(end_time) AS end_time,
-        SUM(duration) AS duration
+        SUM(GREATEST(duration, 0)) AS duration
       FROM activity_logs
       WHERE user_id = $1
     `;
@@ -571,7 +325,7 @@ const getActivityLogs = async (req, res) => {
 
     query += `
       GROUP BY app_name
-      ORDER BY SUM(duration) DESC
+      ORDER BY SUM(GREATEST(duration, 0)) DESC
     `;
 
     const result = await pool.query(query, params);
@@ -597,7 +351,9 @@ const getUserFullReport = async (req, res) => {
     let activityFilter = "";
     let idleFilter = "";
 
-
+    // =====================
+    // DATE FILTER
+    // =====================
     if (from && to) {
       params.push(from, to);
 
@@ -606,7 +362,9 @@ const getUserFullReport = async (req, res) => {
       idleFilter = `AND DATE(start_time) BETWEEN $2 AND $3`;
     }
 
-
+    // =====================
+    // USER
+    // =====================
     const user = await pool.query(
       `
       SELECT id, name, email, role, last_active
@@ -616,7 +374,9 @@ const getUserFullReport = async (req, res) => {
       [id]
     );
 
-
+    // =====================
+    // SESSIONS (LIMITED)
+    // =====================
     const sessions = await pool.query(
       `
       SELECT id, login_time, logout_time, total_duration
@@ -629,10 +389,12 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-
+    // =====================
+    // ACTIVITY LOGS (LIMITED)
+    // =====================
     const activityLogs = await pool.query(
       `
-      SELECT app_name, start_time, end_time, duration
+      SELECT app_name, start_time, end_time, GREATEST(duration, 0) AS duration
       FROM activity_logs
       WHERE user_id = $1
       ${activityFilter}
@@ -642,10 +404,12 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-
+    // =====================
+    // IDLE LOGS
+    // =====================
     const idleLogs = await pool.query(
       `
-      SELECT start_time, end_time, duration
+      SELECT start_time, end_time, GREATEST(duration, 0) AS duration
       FROM idle_logs
       WHERE user_id = $1
       ${idleFilter}
@@ -655,10 +419,12 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-
+    // =====================
+    // SUMMARY
+    // =====================
     const summary = await pool.query(
       `
-      SELECT COALESCE(SUM(total_duration),0) AS total_working_time
+      SELECT COALESCE(SUM(GREATEST(total_duration, 0)),0) AS total_working_time
       FROM sessions
       WHERE user_id = $1
       ${sessionFilter}
@@ -668,7 +434,7 @@ const getUserFullReport = async (req, res) => {
 
     const active = await pool.query(
       `
-      SELECT COALESCE(SUM(duration),0) AS active_time
+      SELECT COALESCE(SUM(GREATEST(duration, 0)),0) AS active_time
       FROM activity_logs
       WHERE user_id = $1
       ${activityFilter}
@@ -678,7 +444,7 @@ const getUserFullReport = async (req, res) => {
 
     const idle = await pool.query(
       `
-      SELECT COALESCE(SUM(duration),0) AS idle_time
+      SELECT COALESCE(SUM(GREATEST(duration, 0)),0) AS idle_time
       FROM idle_logs
       WHERE user_id = $1
       ${idleFilter}
@@ -686,10 +452,12 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-
+    // =====================
+    // APP USAGE
+    // =====================
     const appUsage = await pool.query(
       `
-      SELECT app_name, SUM(duration) AS total_duration
+      SELECT app_name, SUM(GREATEST(duration, 0)) AS total_duration
       FROM activity_logs
       WHERE user_id = $1
       ${activityFilter}
@@ -699,12 +467,14 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-
+    // =====================
+    // WEEKLY SUMMARY (NEW FIX)
+    // =====================
     const weeklySummary = await pool.query(
       `
       SELECT
         DATE_TRUNC('week', login_time) AS week,
-        SUM(total_duration) AS total_time
+        SUM(GREATEST(total_duration, 0)) AS total_time
       FROM sessions
       WHERE user_id = $1
       ${sessionFilter}
@@ -714,7 +484,9 @@ const getUserFullReport = async (req, res) => {
       params
     );
 
-
+    // =====================
+    // RESPONSE (CLEAN STRUCTURE)
+    // =====================
     return res.json({
       user: user.rows[0],
 
@@ -743,6 +515,7 @@ const getUserFullReport = async (req, res) => {
 module.exports = {
   getUsers,
   deleteUser,
+  updateUserAssignment,
   updateStatus,
   getEmployeeById,
   getLoginHistory,

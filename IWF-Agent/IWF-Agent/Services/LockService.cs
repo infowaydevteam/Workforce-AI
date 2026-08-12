@@ -26,6 +26,7 @@ public static class LockService
 
     UserSessionState.IsLocked = true;
 
+   ActivityService.OnLocked();
     await ApiService.UpdateStatus("Offline");
 
     await ApiService.EndSession();
@@ -39,8 +40,7 @@ case SessionSwitchReason.SessionUnlock:
 
     UserSessionState.IsLocked = false;
 
-    ActivityService.ResetIdle();
-
+  ActivityService.OnUnlocked();
     await ApiService.UpdateStatus("Online");
 
     await ApiService.StartSession();
@@ -55,7 +55,6 @@ case SessionSwitchReason.SessionUnlock:
             );
         }
     }
-
 
 
     public static void Stop()

@@ -106,44 +106,6 @@ const getDashboardStats = async (req, res) => {
   }
 };
 
-// const getRecentActivities = async (req, res) => {
-//   try {
-//     const result = await pool.query(`
-//       SELECT *
-//       FROM (
-//         SELECT
-//           u.name AS user_name,
-//           a.app_name,
-//           a.start_time,
-//           a.end_time,
-//           ROW_NUMBER() OVER (
-//             PARTITION BY a.app_name
-//             ORDER BY a.start_time DESC
-//           ) AS rn
-//         FROM activity_logs a
-//         JOIN users u
-//           ON a.user_id = u.id
-//       ) t
-//       WHERE rn = 1
-//       ORDER BY start_time DESC
-//       LIMIT 10
-//     `);
-
-//     console.log(pool.constructor.name);
-//     console.log(result.rows);
-
-//     res.json(result.rows);
-
-//   } catch (err) {
-//     console.error("RECENT ACTIVITY ERROR:", err);
-
-//     res.status(500).json({
-//       message: "Activity fetch error",
-//       error: err.message
-//     });
-//   }
-// };
-
 const getRecentActivities = async (req, res) => {
   try {
 
@@ -195,34 +157,6 @@ const getRecentActivities = async (req, res) => {
   }
 };
 
-// const getLiveUsers = async (req, res) => {
-//   try {
-//     const result = await pool.query(`
-//       SELECT
-//         users.id,
-//         users.name,
-//         users.status,
-//         organizations.name AS organization_name,
-//         teams.name AS team_name
-//       FROM users
-//       LEFT JOIN organizations
-//         ON users.organization_id = organizations.id
-//       LEFT JOIN teams
-//         ON users.team_id = teams.id
-//       WHERE users.role != 'admin'
-//       ORDER BY users.name ASC
-//     `);
-
-//     res.json(result.rows);
-//   } catch (err) {
-//     console.error(err);
-
-//     res.status(500).json({
-//       message: "Failed to fetch live users"
-//     });
-//   }
-// };
-
 const getLiveUsers = async (req, res) => {
   try {
     let query = `
@@ -268,32 +202,6 @@ const getLiveUsers = async (req, res) => {
   }
 };
 
-// const getOrganizationSummary = async (req, res) => {
-//   try {
-//     const result = await pool.query(`
-//       SELECT
-//         o.id,
-//         o.name,
-//         COUNT(u.id) AS employee_count
-//       FROM organizations o
-//       LEFT JOIN users u
-//         ON u.organization_id = o.id
-//         AND u.role != 'admin'
-//       GROUP BY o.id, o.name
-//       ORDER BY employee_count DESC
-//     `);
-
-//     res.json(result.rows);
-//   } catch (err) {
-//     console.error(err);
-
-//     res.status(500).json({
-//       message: "Organization summary error",
-//     });
-//   }
-// };
-
-
 const getOrganizationSummary = async (req, res) => {
   try {
 
@@ -334,28 +242,6 @@ const getOrganizationSummary = async (req, res) => {
     });
   }
 };
-
-// const getTopApplicationsToday = async (req, res) => {
-//   try {
-//     const result = await pool.query(`
-//       SELECT
-//         app_name,
-//         SUM(duration) AS total_duration
-//       FROM activity_logs
-//       WHERE DATE(start_time) = CURRENT_DATE
-//       GROUP BY app_name
-//       ORDER BY total_duration DESC
-//       LIMIT 10
-//     `);
-
-//     res.json(result.rows);
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({
-//       message: "Top applications error",
-//     });
-//   }
-// };
 
 const getTopApplicationsToday = async (req, res) => {
   try {

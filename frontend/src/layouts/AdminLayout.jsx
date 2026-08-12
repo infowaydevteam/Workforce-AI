@@ -7,7 +7,6 @@ import {
   UsersRound,
   FileText,
   BarChart3,
-  Settings,
 } from "lucide-react";
 import { Outlet, useNavigate } from "react-router-dom";
 
@@ -18,28 +17,32 @@ const AdminLayout = () => {
 
   const managementItems = [];
 
-  // Sirf Super Admin
   if (role === "superadmin") {
-    managementItems.push({
-      name: "Organizations",
-      icon: <Building2 size={20} />,
-      action: () => navigate("/admin/organizations"),
-    },
+    managementItems.push(
+      {
+        name: "Organizations",
+        icon: <Building2 size={20} />,
+        action: () => navigate("/admin/organizations"),
+      },
       {
         name: "Teams",
         icon: <UsersRound size={20} />,
         action: () => navigate("/admin/teams"),
+      },
+      {
+        name: "Policies",
+        icon: <FileText size={20} />,
+        action: () => navigate("/admin/policies"),
       }
     );
   }
 
-  managementItems.push(
-    {
-      name: "Employees",
-      icon: <Users size={20} />,
-      action: () => navigate("/admin/employee"),
-    }
-  );
+
+  managementItems.push({
+    name: "Employees",
+    icon: <Users size={20} />,
+    action: () => navigate("/admin/employee"),
+  });
 
   const menuItems = [
     {
@@ -61,7 +64,7 @@ const AdminLayout = () => {
       items: [
         {
           name: "Reports",
-          icon: <FileText size={20} />,
+          icon: <BarChart3 size={20} />,
           action: () => navigate("/admin/reports"),
         },
       ],
@@ -69,13 +72,10 @@ const AdminLayout = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Sidebar
-        title="Admin Panel"
-        menuItems={menuItems}
-      />
+    <div className="flex min-h-screen">
+      <Sidebar menuItems={menuItems} />
 
-      <div className="ml-64">
+      <div className="ml-64 flex-1">
         <Outlet />
       </div>
     </div>
