@@ -1,54 +1,10 @@
 const pool = require("../db");
 
 // START SESSION
-// const startSession = async (req, res) => {
-//   try {
-//     const { user_id } = req.body;
-
-//     const result = await pool.query(
-//       `INSERT INTO sessions (user_id, login_time)
-//        VALUES ($1, NOW())
-//        RETURNING *`,
-//       [user_id]
-//     );
-
-//     await pool.query(
-//       `UPDATE users
-//    SET status = 'Online',
-//        last_active = NOW()
-//    WHERE id = $1`,
-//       [user_id]
-//     );
-
-//     res.json({ success: true, session: result.rows[0] });
-//   } catch (err) {
-//     res.status(500).json({ success: false, error: err.message });
-//   }
-// };
-
 const startSession = async (req, res) => {
   try {
     const { user_id } = req.body;
 
-    // Check if active session already exists
-    const existing = await pool.query(
-      `SELECT id
-       FROM sessions
-       WHERE user_id = $1
-       AND logout_time IS NULL
-       LIMIT 1`,
-      [user_id]
-    );
-
-    if (existing.rows.length > 0) {
-      return res.json({
-        success: true,
-        message: "Session already running",
-        session_id: existing.rows[0].id,
-      });
-    }
-
-    // Create new session
     const result = await pool.query(
       `INSERT INTO sessions (user_id, login_time)
        VALUES ($1, NOW())
@@ -58,22 +14,15 @@ const startSession = async (req, res) => {
 
     await pool.query(
       `UPDATE users
-       SET status = 'Online',
-           last_active = NOW()
-       WHERE id = $1`,
+   SET status = 'Online',
+       last_active = NOW()
+   WHERE id = $1`,
       [user_id]
     );
 
-    res.json({
-      success: true,
-      session: result.rows[0],
-    });
-
+    res.json({ success: true, session: result.rows[0] });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      error: err.message,
-    });
+    res.status(500).json({ success: false, error: err.message });
   }
 };
 
@@ -100,8 +49,9 @@ const endSession = async (req, res) => {
     const loginTime = session.rows[0].login_time;
     const logoutTime = new Date();
 
-    const duration = Math.floor(
-      (logoutTime - new Date(loginTime)) / 1000
+    const duration = Math.max(
+      0,
+      Math.floor((logoutTime - new Date(loginTime)) / 1000)
     );
 
     await pool.query(

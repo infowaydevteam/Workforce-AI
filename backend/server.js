@@ -14,6 +14,7 @@ const agentRoutes = require("./route/agentRoutes");
 const alertRoutes = require("./route/alertRoute");
 const restrictedRoute = require("./route/restrictedRoute");
 const heartbeatRoute = require("./route/heartbeatRoute");
+const adminWorkflowRoutes = require("./route/adminWorkflowRoute");
 const startOfflineChecker = require("./services/offlineChecker");
 const teamReportRoutes = require("./route/teamsReportRouter");
 const websiteRoute = require("./route/websiteRoute");
@@ -35,6 +36,7 @@ app.use("/api/agent", agentRoutes);
 app.use("/api/alerts", alertRoutes);
 app.use("/api/restricted-items", restrictedRoute);
 app.use("/api/heartbeat", heartbeatRoute);
+app.use("/api/admin-workflow", adminWorkflowRoutes);
 app.use(
 "/api/team-report",
 teamReportRoutes

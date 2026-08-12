@@ -14,13 +14,20 @@ const getUsers = async (req, res) => {
           users.email,
           users.role,
           users.status,
+          users.agent_token,
+          users.organization_id,
+          users.team_id,
+          users.manager_id,
           organizations.name AS organization_name,
-          teams.name AS team_name
+          teams.name AS team_name,
+          managers.name AS manager_name
         FROM users
         LEFT JOIN organizations
           ON users.organization_id = organizations.id
         LEFT JOIN teams
           ON users.team_id = teams.id
+        LEFT JOIN users managers
+          ON users.manager_id = managers.id
         WHERE users.role != 'superadmin'
         ORDER BY users.id DESC
       `);
@@ -35,13 +42,20 @@ const getUsers = async (req, res) => {
           users.email,
           users.role,
           users.status,
+          users.agent_token,
+          users.organization_id,
+          users.team_id,
+          users.manager_id,
           organizations.name AS organization_name,
-          teams.name AS team_name
+          teams.name AS team_name,
+          managers.name AS manager_name
         FROM users
         LEFT JOIN organizations
           ON users.organization_id = organizations.id
         LEFT JOIN teams
           ON users.team_id = teams.id
+        LEFT JOIN users managers
+          ON users.manager_id = managers.id
         WHERE users.organization_id = $1
           AND users.role NOT IN ('superadmin', 'admin')
         ORDER BY users.id DESC
@@ -128,6 +142,39 @@ const deleteUser = async (req, res) => {
   }
 };
 
+const updateUserAssignment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, organization_id, team_id, manager_id } = req.body;
+
+    const result = await pool.query(
+      `UPDATE users
+       SET role = COALESCE($1, role),
+           organization_id = $2,
+           team_id = $3,
+           manager_id = $4
+       WHERE id = $5
+       RETURNING id, name, email, role, organization_id, team_id, manager_id`,
+      [
+        role || null,
+        organization_id || null,
+        team_id || null,
+        manager_id || null,
+        id,
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to update user assignment" });
+  }
+};
+
 // const updateStatus = async (req, res) => {
 //   try {
 //     const { user_id, status } = req.body;
@@ -172,17 +219,19 @@ const updateStatus = async (req, res) => {
     const formattedStatus =
       status.charAt(0).toUpperCase() +
       status.slice(1).toLowerCase();
+    const normalizedStatus =
+      formattedStatus === "Paused" ? "Offline" : formattedStatus;
 
     let result;
 
-    if (formattedStatus === "Online") {
+    if (normalizedStatus === "Online") {
       result = await pool.query(
         `UPDATE users
          SET status = $1,
              last_active = NOW()
          WHERE id = $2
          RETURNING *`,
-        [formattedStatus, user_id]
+        [normalizedStatus, user_id]
       );
     } else {
       result = await pool.query(
@@ -190,7 +239,7 @@ const updateStatus = async (req, res) => {
          SET status = $1
          WHERE id = $2
          RETURNING *`,
-        [formattedStatus, user_id]
+        [normalizedStatus, user_id]
       );
     }
 
@@ -220,6 +269,7 @@ const getEmployeeById = async (req, res) => {
         u.email,
         u.role,
         u.status,
+        u.agent_token,
         u.last_active,
         o.name AS organization_name,
         t.name AS team_name
@@ -743,6 +793,7 @@ const getUserFullReport = async (req, res) => {
 module.exports = {
   getUsers,
   deleteUser,
+  updateUserAssignment,
   updateStatus,
   getEmployeeById,
   getLoginHistory,

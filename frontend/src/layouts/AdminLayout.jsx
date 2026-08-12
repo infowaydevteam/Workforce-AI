@@ -38,6 +38,11 @@ const AdminLayout = () => {
       name: "Employees",
       icon: <Users size={20} />,
       action: () => navigate("/admin/employee"),
+    },
+    {
+      name: "Policies",
+      icon: <Settings size={20} />,
+      action: () => navigate("/admin/policies"),
     }
   );
 

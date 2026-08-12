@@ -9,6 +9,7 @@ import Organizations from './components/pages/admin/Organizations';
 import Teams from './components/pages/admin/Teams';
 import Reports from './components/pages/admin/Reports';
 import EmployeeDetail from './components/pages/admin/EmployeeDetail';
+import AdminPolicies from './components/pages/admin/AdminPolicies';
 
 const App = () => {
   return (
@@ -32,6 +33,9 @@ const App = () => {
           <Route path="/admin/organizations" element={<Organizations />} />
           <Route path="/admin/Teams" element={<Teams />} />
           <Route path="/admin/Reports" element={<Reports />} />
+          <Route path="/admin/teams" element={<Teams />} />
+          <Route path="/admin/reports" element={<Reports />} />
+          <Route path="/admin/policies" element={<AdminPolicies />} />
         </Route>
 
       </Routes>

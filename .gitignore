@@ -1,3 +1,29 @@
 
 frontend/node_modules/
 backend/node_modules/
+
+# Local environment secrets
+.env
+.env.*
+backend/.env
+backend/.env.*
+!*.env.example
+IWF-Agent/**/config.json
+
+# Build output and generated artifacts
+frontend/dist/
+build/
+dist/
+bin/
+obj/
+IWF-Agent/**/bin/
+IWF-Agent/**/obj/
+
+# Local database dumps and packaged binaries
+IWF
+*.dump
+*.bak
+*.sqlite
+*.db
+*.zip
+!backend/agent-updates/**/*.zip
