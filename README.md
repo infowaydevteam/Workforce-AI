@@ -36,6 +36,26 @@ http://localhost:5173
 
 Login using admin credentials.
 
+## Roles and Permissions
+
+IWF currently uses the following user roles:
+
+| Role | Purpose |
+|---|---|
+| `superadmin` | Platform-level administrator. Can manage organizations, teams, employees, policies, reports, and screenshots across all organizations. |
+| `admin` | Organization-level administrator. Can manage employees, teams, policies, reports, and screenshots within their organization. |
+| `hr` | HR/reporting role. Can access Reports and view employee screenshots within their organization. |
+| `employee` | Regular monitored employee. Uses the desktop agent for status, activity, idle time, and screenshot uploads. |
+| `manager` | Team manager role. Receives restricted website/app usage alerts for employees in their team. |
+| `executive` | Reserved business role. Currently available for assignment and display, but does not have dedicated dashboard or report permissions yet. |
+
+Notes:
+
+* `superadmin`, `admin`, and `hr` can access screenshot reports according to their scope.
+* `employee`, `manager`, and `executive` are treated as monitored users for agent-based tracking.
+* `manager` is used by restricted alert emails when an employee accesses a restricted website or app.
+* Role values are currently stored as strings in `users.role`.
+
 ### 4. Create Organization
 
 Organizations → Add Organization
