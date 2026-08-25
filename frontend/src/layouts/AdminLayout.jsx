@@ -33,34 +33,44 @@ const AdminLayout = () => {
     );
   }
 
-  managementItems.push(
-    {
-      name: "Employees",
-      icon: <Users size={20} />,
-      action: () => navigate("/admin/employee"),
-    },
-    {
-      name: "Policies",
-      icon: <Settings size={20} />,
-      action: () => navigate("/admin/policies"),
-    }
-  );
+  if (role !== "hr") {
+    managementItems.push(
+      {
+        name: "Employees",
+        icon: <Users size={20} />,
+        action: () => navigate("/admin/employee"),
+      },
+      {
+        name: "Policies",
+        icon: <Settings size={20} />,
+        action: () => navigate("/admin/policies"),
+      }
+    );
+  }
 
   const menuItems = [
-    {
-      label: "MAIN",
-      items: [
-        {
-          name: "Dashboard",
-          icon: <LayoutDashboard size={20} />,
-          action: () => navigate("/admin"),
-        },
-      ],
-    },
-    {
-      label: "MANAGEMENT",
-      items: managementItems,
-    },
+    ...(role !== "hr"
+      ? [
+          {
+            label: "MAIN",
+            items: [
+              {
+                name: "Dashboard",
+                icon: <LayoutDashboard size={20} />,
+                action: () => navigate("/admin"),
+              },
+            ],
+          },
+        ]
+      : []),
+    ...(managementItems.length
+      ? [
+          {
+            label: "MANAGEMENT",
+            items: managementItems,
+          },
+        ]
+      : []),
     {
       label: "ANALYTICS",
       items: [

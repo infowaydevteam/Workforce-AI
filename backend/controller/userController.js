@@ -1,4 +1,5 @@
 const pool = require("../db");
+const { deleteStoredScreenshot } = require("../services/screenshotStorageService");
 
 // Get All Users
 
@@ -89,6 +90,25 @@ const deleteUser = async (req, res) => {
     const { id } = req.params;
 
     await client.query("BEGIN");
+
+    const screenshots = await client.query(
+      "SELECT storage_path FROM employee_screenshots WHERE employee_id = $1",
+      [id]
+    );
+
+    for (const screenshot of screenshots.rows) {
+      await deleteStoredScreenshot(screenshot.storage_path);
+    }
+
+    await client.query(
+      "DELETE FROM screenshot_audit_logs WHERE employee_id = $1",
+      [id]
+    );
+
+    await client.query(
+      "DELETE FROM employee_screenshots WHERE employee_id = $1",
+      [id]
+    );
 
     // Restricted Alerts
     await client.query(

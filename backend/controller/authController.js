@@ -78,7 +78,7 @@ const login = async (req, res) => {
         const { email, password } = req.body;
 
         const user = await pool.query(
-            "SELECT id, name, email, password, role FROM users WHERE email = $1",
+            "SELECT id, name, email, password, role, organization_id FROM users WHERE email = $1",
             [email]
         );
 
@@ -100,6 +100,7 @@ const login = async (req, res) => {
                 id: user.rows[0].id,
                 email: user.rows[0].email,
                 role: user.rows[0].role,
+                organization_id: user.rows[0].organization_id,
             },
             process.env.JWT_SECRET,
             { expiresIn: "1d" }
@@ -113,6 +114,7 @@ const login = async (req, res) => {
                 name: user.rows[0].name,
                 email: user.rows[0].email,
                 role: user.rows[0].role,
+                organization_id: user.rows[0].organization_id,
             },
         });
 

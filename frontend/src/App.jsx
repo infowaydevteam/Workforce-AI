@@ -22,20 +22,69 @@ const App = () => {
 
         <Route
           element={
-            <ProtectedRoute allowedRoles={["superadmin","admin"]}>
+            <ProtectedRoute allowedRoles={["superadmin","admin","hr"]}>
               <AdminLayout />
             </ProtectedRoute>
           }
         >
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/employee" element={<Users />} />
-          <Route path="/admin/employee/:id" element={<EmployeeDetail />} />
-          <Route path="/admin/organizations" element={<Organizations />} />
-          <Route path="/admin/Teams" element={<Teams />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={["superadmin", "admin"]}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/employee"
+            element={
+              <ProtectedRoute allowedRoles={["superadmin", "admin"]}>
+                <Users />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/employee/:id"
+            element={
+              <ProtectedRoute allowedRoles={["superadmin", "admin"]}>
+                <EmployeeDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/organizations"
+            element={
+              <ProtectedRoute allowedRoles={["superadmin", "admin"]}>
+                <Organizations />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/Teams"
+            element={
+              <ProtectedRoute allowedRoles={["superadmin", "admin"]}>
+                <Teams />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/admin/Reports" element={<Reports />} />
-          <Route path="/admin/teams" element={<Teams />} />
+          <Route
+            path="/admin/teams"
+            element={
+              <ProtectedRoute allowedRoles={["superadmin", "admin"]}>
+                <Teams />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/admin/reports" element={<Reports />} />
-          <Route path="/admin/policies" element={<AdminPolicies />} />
+          <Route
+            path="/admin/policies"
+            element={
+              <ProtectedRoute allowedRoles={["superadmin", "admin"]}>
+                <AdminPolicies />
+              </ProtectedRoute>
+            }
+          />
         </Route>
 
       </Routes>

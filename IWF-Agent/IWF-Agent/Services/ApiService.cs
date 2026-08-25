@@ -307,4 +307,44 @@ public static async Task<AgentPolicyConfig?> GetAgentPolicyConfig()
     }
 }
 
+public static async Task SendScreenshot(
+    byte[] imageBytes,
+    DateTime capturedAt
+)
+{
+    try
+    {
+        var data = new
+        {
+            agent_token = ConfigService.GetToken(),
+            employee_id = UserContext.UserId,
+            captured_at = capturedAt,
+            image_base64 = Convert.ToBase64String(imageBytes)
+        };
+
+        var json = JsonSerializer.Serialize(data);
+
+        var content = new StringContent(
+            json,
+            Encoding.UTF8,
+            "application/json"
+        );
+
+        var response = await client.PostAsync(
+            $"{ConfigService.GetApiBaseUrl()}/api/screenshots/upload",
+            content
+        );
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"Screenshot upload failed: {result}");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"SendScreenshot Error: {ex.Message}");
+    }
+}
+
 }

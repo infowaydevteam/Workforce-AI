@@ -18,11 +18,13 @@ const adminWorkflowRoutes = require("./route/adminWorkflowRoute");
 const startOfflineChecker = require("./services/offlineChecker");
 const teamReportRoutes = require("./route/teamsReportRouter");
 const websiteRoute = require("./route/websiteRoute");
+const screenshotRoutes = require("./route/screenshotRoute");
+const startScreenshotCleanup = require("./services/screenshotCleanupService");
 
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "15mb" }));
 
 app.use("/api/auth", authRoute);
 app.use("/api/employee",userRoute);
@@ -42,9 +44,11 @@ app.use(
 teamReportRoutes
 );
 app.use("/api/websites", websiteRoute);
+app.use("/api/screenshots", screenshotRoutes);
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);
 });
 
 startOfflineChecker();
+startScreenshotCleanup();

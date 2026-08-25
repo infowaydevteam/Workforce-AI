@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { API_BASE_URL } from "../../../../config";
 import { Download } from "lucide-react";
+import ScreenshotReports from "./ScreenshotReports";
 
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -53,6 +54,7 @@ const Reports = () => {
 
   const [report, setReport] = useState(null);
   const [expandedUser, setExpandedUser] = useState(null);
+  const [activeReportView, setActiveReportView] = useState("team");
 
   useEffect(() => {
     loadOrganizations();
@@ -380,6 +382,53 @@ const Reports = () => {
     doc.save("Team_Productivity_Report.pdf");
   };
 
+  const reportTabs = (
+    <div className="bg-white rounded-2xl p-2 shadow-sm border inline-flex gap-2">
+      <button
+        onClick={() => setActiveReportView("team")}
+        className={`px-4 py-2 rounded-xl ${
+          activeReportView === "team"
+            ? "bg-indigo-600 text-white"
+            : "text-slate-600 hover:bg-slate-100"
+        }`}
+      >
+        Team Report
+      </button>
+      <button
+        onClick={() => {
+          setReport(null);
+          setActiveReportView("screenshots");
+        }}
+        className={`px-4 py-2 rounded-xl ${
+          activeReportView === "screenshots"
+            ? "bg-indigo-600 text-white"
+            : "text-slate-600 hover:bg-slate-100"
+        }`}
+      >
+        Screenshots
+      </button>
+    </div>
+  );
+
+  if (activeReportView === "screenshots") {
+    return (
+      <div className="min-h-screen bg-slate-100 p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="bg-gradient-to-r from-indigo-700 to-purple-700 rounded-3xl p-8 text-white">
+            <h1 className="text-4xl font-bold">Reports</h1>
+            <p className="mt-2 text-indigo-100">
+              Review employee screenshots by employee and date range
+            </p>
+          </div>
+
+          {reportTabs}
+
+          <ScreenshotReports />
+        </div>
+      </div>
+    );
+  }
+
   if (!report) {
     return (
       <div className="min-h-screen bg-slate-100 p-6">
@@ -391,6 +440,8 @@ const Reports = () => {
               Generate Team Productivity Report
             </p>
           </div>
+
+          {reportTabs}
 
           <div className="bg-white rounded-2xl p-6 grid md:grid-cols-5 gap-4">
             <select

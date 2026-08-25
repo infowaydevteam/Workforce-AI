@@ -83,6 +83,7 @@ class Program
             // ==========================
 
             ActivityService.Start();
+            ScreenshotService.Start(policyConfig);
 
             await Task.Delay(Timeout.Infinite);
         }
@@ -92,6 +93,7 @@ class Program
         }
         finally
         {
+            ScreenshotService.Stop();
             await ActivityService.Stop();
         }
     }
