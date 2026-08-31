@@ -6,6 +6,8 @@ class Program
 {
     static async Task Main(string[] args)
     {
+        using CancellationTokenSource cts = new();
+
         try
         {
             Console.WriteLine("IWF Background Agent Started...");
@@ -40,6 +42,7 @@ class Program
             {
                 return;
             }
+
             AgentUpdateService.StartPeriodicChecks();
 
             var policyConfig =
@@ -51,7 +54,8 @@ class Program
             // Start Session
             // ==========================
 
-            await ApiService.StartSession();
+            // await ApiService.StartSession();
+
 
             // ==========================
             // Load Restricted Items
@@ -82,10 +86,54 @@ class Program
             // Start Monitoring
             // ==========================
 
-            ActivityService.Start();
-            ScreenshotService.Start(policyConfig);
+            await ActivityService.Start();
+LockService.Start();
+            // ==========================
+            // Heartbeat
+            // ==========================
 
-            await Task.Delay(Timeout.Infinite);
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    while (!cts.Token.IsCancellationRequested)
+                    {
+                        await ApiService.SendHeartbeat();
+
+                        await Task.Delay(
+                            TimeSpan.FromSeconds(10),
+                            cts.Token
+                        );
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    Console.WriteLine(
+                        "Heartbeat stopped."
+                    );
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(
+                        $"Heartbeat Error: {ex.Message}"
+                    );
+                }
+            }, cts.Token);
+
+            // ==========================
+            // Keep Agent Running
+            // ==========================
+
+            await Task.Delay(
+                Timeout.Infinite,
+                cts.Token
+            );
+        }
+        catch (OperationCanceledException)
+        {
+            Console.WriteLine(
+                "Agent cancellation requested."
+            );
         }
         catch (Exception ex)
         {
@@ -93,8 +141,15 @@ class Program
         }
         finally
         {
-            ScreenshotService.Stop();
+            // Stop heartbeat
+            cts.Cancel();
+
+            // Stop activity tracking
             await ActivityService.Stop();
+
+            Console.WriteLine(
+                "Agent shutdown completed."
+            );
         }
     }
 }

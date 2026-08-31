@@ -9,30 +9,39 @@ using System.Threading.Tasks;
 
 public static class AgentUpdateService
 {
-    public const string CurrentVersion = "1.0.0";
+    public const string CurrentVersion = "1.0.4";
     private const string Platform = "windows";
     private static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(6);
     private static readonly HttpClient client = new HttpClient();
     private static bool periodicChecksStarted = false;
 
     public static void StartPeriodicChecks()
+{
+    if (periodicChecksStarted) return;
+
+    periodicChecksStarted = true;
+
+    _ = Task.Run(async () =>
     {
-        if (periodicChecksStarted) return;
-
-        periodicChecksStarted = true;
-
-        _ = Task.Run(async () =>
+        // Check immediately
+        if (await CheckForUpdates())
         {
-            while (true)
+            Environment.Exit(0);
+            return;
+        }
+
+        while (true)
+        {
+            await Task.Delay(UpdateCheckInterval);
+
+            if (await CheckForUpdates())
             {
-                await Task.Delay(UpdateCheckInterval);
-                if (await CheckForUpdates())
-                {
-                    Environment.Exit(0);
-                }
+                Environment.Exit(0);
+                return;
             }
-        });
-    }
+        }
+    });
+}
 
     public static async Task<bool> CheckForUpdates()
     {

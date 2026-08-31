@@ -119,38 +119,10 @@ After successful installation:
 * Agent verifies the employee token with backend
 * Status appears as Online, Idle, or Offline
 * Activity and idle tracking begin according to company policy
-* Screenshots are captured automatically when the organization's screenshot interval is enabled
 
 No further action is required.
 
-### 4. Periodic Screenshot Capture
-
-Admins can enable screenshot capture from:
-
-```text
-Policies -> Monitoring Policies -> Screenshot Interval (seconds)
-```
-
-Behavior:
-
-* `0` disables screenshot capture.
-* A positive value enables automatic background screenshots.
-* Screenshots are encrypted at rest and visible from Reports by employee/date range.
-* Screenshot access is role-gated and audited.
-
-For test and demo details, see `docs/screenshot-capture-test-demo.md`.
-
-### 5. macOS Development / Demo Script
-
-Unsigned macOS `.pkg` files can be blocked by Gatekeeper during development. For local testing, run:
-
-```bash
-IWF_AGENT_CONFIG=/path/to/config.json node scripts/mac-agent.mjs
-```
-
-If macOS asks for permission, enable Terminal under Screen Recording, then restart Terminal.
-
-### 6. Automatic Updates
+### 4. Automatic Updates
 
 After the first installation, employees do not need to uninstall and reinstall for future agent releases.
 

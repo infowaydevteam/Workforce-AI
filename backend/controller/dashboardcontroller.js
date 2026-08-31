@@ -1,72 +1,198 @@
 const pool = require("../db");
 
-
-
 const getDashboardStats = async (req, res) => {
   try {
-    const users = await pool.query(` SELECT COUNT(*) FROM users WHERE role != 'admin'`);
+    console.log("========== DASHBOARD STATS ==========");
+    console.log("REQ.USER:", req.user);
 
-    const orgs = await pool.query(`
-  SELECT COUNT(*) FROM organizations
-`);
+    const role = String(req.user?.role || "").toLowerCase();
 
-    const teams = await pool.query(`
-  SELECT COUNT(*) FROM teams
-`);
+    // JWT me jo bhi ID field hai usko support karega
+    const userId =
+      req.user?.id ??
+      req.user?.user_id ??
+      req.user?.userId;
 
-    const allUsers = await pool.query(`
-  SELECT id,name,status,last_active
-  FROM users
-  WHERE role != 'admin'
-`);
+    console.log("ROLE:", role);
+    console.log("USER ID:", userId);
 
-    console.log("ALL USERS =>");
-    console.table(allUsers.rows);
+    // =====================================================
+    // SUPERADMIN
+    // =====================================================
+    if (role === "superadmin") {
+      const result = await pool.query(`
+        SELECT
+          (SELECT COUNT(*)
+           FROM users
+           WHERE role != 'superadmin')::int AS total_users,
 
-    const onlineUsers = await pool.query(`
-  SELECT COUNT(*)
-  FROM users
-  WHERE role != 'admin'
-  AND LOWER(status) = 'online'
-`);
-    console.log(onlineUsers.rows);
-    const idleUsers = await pool.query(`
-  SELECT COUNT(*)
-  FROM users
-  WHERE role != 'admin'
-  AND LOWER(status) = 'idle'
-`);
+          (SELECT COUNT(*)
+           FROM organizations)::int AS total_organizations,
 
-    const offlineUsers = await pool.query(`
-  SELECT COUNT(*)
-  FROM users
-  WHERE role != 'admin'
-  AND LOWER(status) = 'offline'
-`);
+          (SELECT COUNT(*)
+           FROM teams)::int AS total_teams,
 
-    res.json({
-      totalUsers: Number(users.rows[0].count),
-      totalOrganizations: Number(orgs.rows[0].count),
-      totalTeams: Number(teams.rows[0].count),
+          (SELECT COUNT(*)
+           FROM users
+           WHERE role != 'superadmin'
+           AND LOWER(COALESCE(status, '')) = 'online')::int AS online_users,
 
-      onlineUsers: Number(
-        onlineUsers.rows[0].count
-      ),
+          (SELECT COUNT(*)
+           FROM users
+           WHERE role != 'superadmin'
+           AND LOWER(COALESCE(status, '')) = 'idle')::int AS idle_users,
 
-      idleUsers: Number(
-        idleUsers.rows[0].count
-      ),
+          (SELECT COUNT(*)
+           FROM users
+           WHERE role != 'superadmin'
+           AND LOWER(COALESCE(status, '')) = 'offline')::int AS offline_users
+      `);
 
-      offlineUsers: Number(
-        offlineUsers.rows[0].count
-      ),
+      const data = result.rows[0];
+
+      return res.json({
+        success: true,
+        totalUsers: data.total_users,
+        totalOrganizations: data.total_organizations,
+        totalTeams: data.total_teams,
+        onlineUsers: data.online_users,
+        idleUsers: data.idle_users,
+        offlineUsers: data.offline_users,
+      });
+    }
+
+    // =====================================================
+    // ADMIN
+    // =====================================================
+    if (role === "admin") {
+
+      if (!userId) {
+        console.log("USER ID NOT FOUND IN TOKEN");
+
+        return res.status(400).json({
+          success: false,
+          message: "User ID not found in token",
+        });
+      }
+
+      // ---------------------------------------------------
+      // Admin ki organization DB se nikalo
+      // ---------------------------------------------------
+      const adminResult = await pool.query(
+        `
+        SELECT
+          id,
+          role,
+          organization_id
+        FROM users
+        WHERE id = $1
+        `,
+        [userId]
+      );
+
+      console.log("ADMIN DB RESULT:", adminResult.rows);
+
+      if (adminResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Admin user not found",
+        });
+      }
+
+      const organizationId = adminResult.rows[0].organization_id;
+
+      console.log("ORGANIZATION ID:", organizationId);
+
+      if (!organizationId) {
+        return res.status(400).json({
+          success: false,
+          message: "Admin is not assigned to any organization",
+        });
+      }
+
+      // ---------------------------------------------------
+      // Organization-wise dashboard
+      // ---------------------------------------------------
+      const result = await pool.query(
+        `
+        SELECT
+
+          (
+            SELECT COUNT(*)
+            FROM users
+            WHERE organization_id = $1
+            AND role != 'superadmin'
+          )::int AS total_users,
+
+          (
+            SELECT COUNT(*)
+            FROM organizations
+            WHERE id = $1
+          )::int AS total_organizations,
+
+          (
+            SELECT COUNT(*)
+            FROM teams
+            WHERE organization_id = $1
+          )::int AS total_teams,
+
+          (
+            SELECT COUNT(*)
+            FROM users
+            WHERE organization_id = $1
+            AND role != 'superadmin'
+            AND LOWER(COALESCE(status, '')) = 'online'
+          )::int AS online_users,
+
+          (
+            SELECT COUNT(*)
+            FROM users
+            WHERE organization_id = $1
+            AND role != 'superadmin'
+            AND LOWER(COALESCE(status, '')) = 'idle'
+          )::int AS idle_users,
+
+          (
+            SELECT COUNT(*)
+            FROM users
+            WHERE organization_id = $1
+            AND role != 'superadmin'
+            AND LOWER(COALESCE(status, '')) = 'offline'
+          )::int AS offline_users
+        `,
+        [organizationId]
+      );
+
+      const data = result.rows[0];
+
+      console.log("ADMIN DASHBOARD DATA:", data);
+
+      return res.json({
+        success: true,
+        totalUsers: data.total_users,
+        totalOrganizations: data.total_organizations,
+        totalTeams: data.total_teams,
+        onlineUsers: data.online_users,
+        idleUsers: data.idle_users,
+        offlineUsers: data.offline_users,
+      });
+    }
+
+    // =====================================================
+    // INVALID ROLE
+    // =====================================================
+    return res.status(403).json({
+      success: false,
+      message: "Access denied",
     });
 
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error("Dashboard Stats Error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
+      success: false,
       message: "Dashboard stats error",
+      error: error.message,
     });
 
   }
@@ -74,45 +200,121 @@ const getDashboardStats = async (req, res) => {
 
 const getRecentActivities = async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT *
-      FROM (
-        SELECT
-          u.name AS user_name,
-          a.app_name,
-          a.start_time,
-          a.end_time,
-          ROW_NUMBER() OVER (
-            PARTITION BY a.app_name
-            ORDER BY a.start_time DESC
-          ) AS rn
-        FROM activity_logs a
-        JOIN users u
-          ON a.user_id = u.id
-      ) t
-      WHERE rn = 1
-      ORDER BY start_time DESC
+    const role = String(req.user?.role || "").toLowerCase();
+
+    const userId =
+      req.user?.id ??
+      req.user?.user_id ??
+      req.user?.userId;
+
+    console.log("========== RECENT ACTIVITIES ==========");
+    console.log("REQ.USER:", req.user);
+    console.log("ROLE:", role);
+    console.log("USER ID:", userId);
+
+    let query = `
+      SELECT
+        u.id AS user_id,
+        u.name AS user_name,
+        a.app_name,
+        a.start_time,
+        a.end_time
+      FROM activity_logs a
+      INNER JOIN users u
+        ON a.user_id = u.id
+    `;
+
+    let values = [];
+
+    // ==========================================
+    // ADMIN
+    // ==========================================
+    if (role === "admin") {
+
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "User ID not found in token",
+        });
+      }
+
+      const adminResult = await pool.query(
+        `
+        SELECT organization_id
+        FROM users
+        WHERE id = $1
+        `,
+        [userId]
+      );
+
+      if (adminResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Admin user not found",
+        });
+      }
+
+      const organizationId = adminResult.rows[0].organization_id;
+
+      console.log("ADMIN ORGANIZATION ID:", organizationId);
+
+      if (!organizationId) {
+        return res.status(400).json({
+          success: false,
+          message: "Admin is not assigned to any organization",
+        });
+      }
+
+      query += `
+        WHERE u.organization_id = $1
+      `;
+
+      values.push(organizationId);
+    }
+
+    // ==========================================
+    // SUPERADMIN
+    // ==========================================
+    // Superadmin ke liye organization filter nahi lagega.
+
+    query += `
+      ORDER BY a.start_time DESC
       LIMIT 10
     `);
 
     console.log(pool.constructor.name);
     console.log(result.rows);
 
-    res.json(result.rows);
+    console.log("RECENT ACTIVITIES COUNT:", result.rows.length);
+
+    return res.json(result.rows);
 
   } catch (err) {
     console.error("RECENT ACTIVITY ERROR:", err);
 
-    res.status(500).json({
+    return res.status(500).json({
+      success: false,
       message: "Activity fetch error",
-      error: err.message
+      error: err.message,
     });
   }
 };
 
 const getLiveUsers = async (req, res) => {
   try {
-    const result = await pool.query(`
+    const role = String(req.user?.role || "").toLowerCase();
+
+    const userId =
+      req.user?.id ??
+      req.user?.user_id ??
+      req.user?.userId;
+
+    console.log("========== LIVE USERS ==========");
+    console.log("REQ.USER:", req.user);
+    console.log("ROLE:", role);
+    console.log("USER ID:", userId);
+
+    let query = `
       SELECT
         users.id,
         users.name,
@@ -124,63 +326,282 @@ const getLiveUsers = async (req, res) => {
         ON users.organization_id = organizations.id
       LEFT JOIN teams
         ON users.team_id = teams.id
-      WHERE users.role != 'admin'
+      WHERE users.role != 'superadmin'
+    `;
+
+    let values = [];
+
+    // ==========================================
+    // ADMIN
+    // ==========================================
+    if (role === "admin") {
+
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "User ID not found in token",
+        });
+      }
+
+      const adminResult = await pool.query(
+        `
+        SELECT organization_id
+        FROM users
+        WHERE id = $1
+        `,
+        [userId]
+      );
+
+      if (adminResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Admin user not found",
+        });
+      }
+
+      const organizationId = adminResult.rows[0].organization_id;
+
+      console.log("ADMIN ORGANIZATION ID:", organizationId);
+
+      if (!organizationId) {
+        return res.status(400).json({
+          success: false,
+          message: "Admin is not assigned to any organization",
+        });
+      }
+
+      query += `
+        AND users.organization_id = $1
+        AND users.role != 'admin'
+      `;
+
+      values.push(organizationId);
+    }
+
+    // ==========================================
+    // SUPERADMIN
+    // ==========================================
+    // Superadmin ko sabhi organizations ke users milenge.
+
+    query += `
       ORDER BY users.name ASC
     `);
 
-    res.json(result.rows);
+    console.log("LIVE USERS COUNT:", result.rows.length);
+
+    return res.json(result.rows);
+
   } catch (err) {
     console.error(err);
 
-    res.status(500).json({
-      message: "Failed to fetch live users"
+    return res.status(500).json({
+      success: false,
+      message: "Live users fetch error",
+      error: err.message,
     });
   }
 };
 
 const getOrganizationSummary = async (req, res) => {
   try {
-    const result = await pool.query(`
+    const role = String(req.user?.role || "").toLowerCase();
+
+    const userId =
+      req.user?.id ??
+      req.user?.user_id ??
+      req.user?.userId;
+
+    console.log("========== ORGANIZATION SUMMARY ==========");
+    console.log("REQ.USER:", req.user);
+    console.log("ROLE:", role);
+    console.log("USER ID:", userId);
+
+    let query = `
       SELECT
         o.id,
         o.name,
-        COUNT(u.id) AS employee_count
+        COUNT(u.id)::int AS employee_count
       FROM organizations o
       LEFT JOIN users u
         ON u.organization_id = o.id
-        AND u.role != 'admin'
+        AND u.role != 'superadmin'
+    `;
+
+    let values = [];
+
+    // ==========================================
+    // ADMIN
+    // ==========================================
+    if (role === "admin") {
+
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "User ID not found in token",
+        });
+      }
+
+      // Admin ki organization DB se nikalo
+      const adminResult = await pool.query(
+        `
+        SELECT organization_id
+        FROM users
+        WHERE id = $1
+        `,
+        [userId]
+      );
+
+      if (adminResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Admin user not found",
+        });
+      }
+
+      const organizationId = adminResult.rows[0].organization_id;
+
+      console.log("ADMIN ORGANIZATION ID:", organizationId);
+
+      if (!organizationId) {
+        return res.status(400).json({
+          success: false,
+          message: "Admin is not assigned to any organization",
+        });
+      }
+
+      query += `
+        WHERE o.id = $1
+      `;
+
+      values.push(organizationId);
+    }
+
+    // ==========================================
+    // SUPERADMIN
+    // ==========================================
+    // Superadmin ke liye WHERE nahi lagega,
+    // isliye sabhi organizations aayengi.
+
+    query += `
       GROUP BY o.id, o.name
       ORDER BY employee_count DESC
     `);
 
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
+    console.log("ORGANIZATION SUMMARY:", result.rows);
 
-    res.status(500).json({
+    return res.json(result.rows);
+
+  } catch (err) {
+    console.error("ORGANIZATION SUMMARY ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
       message: "Organization summary error",
+      error: err.message,
     });
   }
 };
 
 const getTopApplicationsToday = async (req, res) => {
   try {
-    const result = await pool.query(`
+    const role = String(req.user?.role || "").toLowerCase();
+
+    const userId =
+      req.user?.id ??
+      req.user?.user_id ??
+      req.user?.userId;
+
+    console.log("========== TOP APPLICATIONS TODAY ==========");
+    console.log("REQ.USER:", req.user);
+    console.log("ROLE:", role);
+    console.log("USER ID:", userId);
+
+    let query = `
       SELECT
-        app_name,
-        SUM(GREATEST(duration, 0)) AS total_duration
-      FROM activity_logs
-      WHERE DATE(start_time) = CURRENT_DATE
-      GROUP BY app_name
+        a.app_name,
+        COALESCE(SUM(a.duration), 0)::bigint AS total_duration
+      FROM activity_logs a
+      INNER JOIN users u
+        ON a.user_id = u.id
+      WHERE DATE(a.start_time) = CURRENT_DATE
+    `;
+
+    let values = [];
+
+    // ==========================================
+    // ADMIN
+    // ==========================================
+    if (role === "admin") {
+
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "User ID not found in token",
+        });
+      }
+
+      // Admin ki organization DB se nikalo
+      const adminResult = await pool.query(
+        `
+        SELECT organization_id
+        FROM users
+        WHERE id = $1
+        `,
+        [userId]
+      );
+
+      if (adminResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Admin user not found",
+        });
+      }
+
+      const organizationId = adminResult.rows[0].organization_id;
+
+      console.log("ADMIN ORGANIZATION ID:", organizationId);
+
+      if (!organizationId) {
+        return res.status(400).json({
+          success: false,
+          message: "Admin is not assigned to any organization",
+        });
+      }
+
+      query += `
+        AND u.organization_id = $1
+      `;
+
+      values.push(organizationId);
+    }
+
+    // ==========================================
+    // SUPERADMIN
+    // ==========================================
+    // Superadmin ke liye organization filter nahi lagega.
+
+    query += `
+      GROUP BY a.app_name
       ORDER BY total_duration DESC
       LIMIT 10
-    `);
+    `;
 
-    res.json(result.rows);
+    console.log("TOP APPS QUERY:", query);
+    console.log("TOP APPS VALUES:", values);
+
+    const result = await pool.query(query, values);
+
+    console.log("TOP APPS RESULT:", result.rows);
+
+    return res.json(result.rows);
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({
+    console.error("TOP APPLICATIONS ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
       message: "Top applications error",
+      error: err.message,
     });
   }
 };

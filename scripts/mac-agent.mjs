@@ -44,8 +44,6 @@ const state = {
   restrictedName: "",
   restrictedStart: null,
   restrictedAlertSent: false,
-  lastScreenshotAt: 0,
-  screenshotUploadRunning: false,
 };
 
 const readConfig = () => {
@@ -505,50 +503,6 @@ const updateStatus = async (status) => {
   console.log(`Status => ${status}`);
 };
 
-const captureAndUploadScreenshot = async (policy) => {
-  const configuredInterval = Number(policy.screenshot_interval_seconds || 0);
-
-  if (configuredInterval <= 0 || state.screenshotUploadRunning) {
-    return;
-  }
-
-  const intervalMs = Math.max(60, configuredInterval) * 1000;
-
-  if (Date.now() - state.lastScreenshotAt < intervalMs) {
-    return;
-  }
-
-  state.screenshotUploadRunning = true;
-  const capturedAt = new Date();
-  const screenshotPath = path.join(
-    os.tmpdir(),
-    `iwf-screenshot-${process.pid}-${Date.now()}.jpg`
-  );
-
-  try {
-    await execFileAsync("screencapture", ["-x", "-t", "jpg", screenshotPath], {
-      timeout: 10000,
-    });
-
-    const imageBase64 = await fsp.readFile(screenshotPath, "base64");
-
-    await postJson(`${config.apiBaseUrl}/api/screenshots/upload`, {
-      agent_token: config.token,
-      employee_id: state.user.user_id,
-      captured_at: capturedAt.toISOString(),
-      image_base64: imageBase64,
-    });
-
-    state.lastScreenshotAt = Date.now();
-    console.log(`Screenshot uploaded at ${capturedAt.toISOString()}`);
-  } catch (error) {
-    console.error(`Screenshot warning: ${error.message}`);
-  } finally {
-    await fsp.rm(screenshotPath, { force: true }).catch(() => {});
-    state.screenshotUploadRunning = false;
-  }
-};
-
 const fetchPolicy = async (force = false) => {
   const now = Date.now();
 
@@ -689,8 +643,6 @@ const tick = async () => {
   await resumeMonitoring(windowInfo);
 
   const policy = getMonitoringPolicy();
-  await captureAndUploadScreenshot(policy);
-
   const idleSeconds = await getIdleSeconds();
   const idle = idleSeconds >= Number(policy.idle_threshold_seconds || 300);
   const now = new Date();

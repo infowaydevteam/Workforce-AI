@@ -17,7 +17,7 @@ const { verifyToken, authorizeRole } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-router.use(verifyToken, authorizeRole("superadmin", "admin"));
+router.use(verifyToken, authorizeRole("admin","superadmin"));
 
 router.get("/subscription-plans", getSubscriptionPlans);
 router.get("/organizations/:organizationId/setup", getOrganizationSetup);

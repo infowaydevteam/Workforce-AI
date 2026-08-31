@@ -3,7 +3,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-
+using System.Net.Http.Json;
 public class ApiService
 {
     static HttpClient client = new HttpClient();
@@ -30,23 +30,53 @@ public class ApiService
         await client.PostAsync($"{ConfigService.GetApiBaseUrl()}/api/activity/log", content);
     }
 
-    public static async Task StartSession()
+public static async Task StartSession(DateTime loginTime)
+{
+    var data = new
     {
-        var data = new {user_id = UserContext.UserId};
+        user_id = UserContext.UserId,
+        login_time = loginTime
+    };
 
-        var json = JsonSerializer.Serialize(data);
-        var content = new StringContent(json, Encoding.UTF8, "application/json");
+    var json = JsonSerializer.Serialize(data);
 
-        await client.PostAsync($"{ConfigService.GetApiBaseUrl()}/api/session/start", content);
-    }
+    var content = new StringContent(
+        json,
+        Encoding.UTF8,
+        "application/json"
+    );
 
-   public static async Task EndSession()
+    var response = await client.PostAsync(
+        $"{ConfigService.GetApiBaseUrl()}/api/session/start",
+        content
+    );
+
+    Console.WriteLine(
+        $"Start Session Status: {response.StatusCode}"
+    );
+
+    var result = await response.Content.ReadAsStringAsync();
+
+    Console.WriteLine(
+        $"Start Session Response: {result}"
+    );
+}
+
+
+
+
+  public static async Task EndSession(DateTime logoutTime)
 {
     try
     {
-        var data = new {user_id = UserContext.UserId};
+        var data = new
+        {
+            user_id = UserContext.UserId,
+            logout_time = logoutTime
+        };
 
         var json = JsonSerializer.Serialize(data);
+
         var content = new StringContent(
             json,
             Encoding.UTF8,
@@ -58,7 +88,9 @@ public class ApiService
             content
         );
 
-        Console.WriteLine($"End Session Status: {response.StatusCode}");
+        Console.WriteLine(
+            $"End Session Status: {response.StatusCode}"
+        );
 
         var result = await response.Content.ReadAsStringAsync();
 
@@ -66,7 +98,9 @@ public class ApiService
     }
     catch (Exception ex)
     {
-        Console.WriteLine("EndSession Error: " + ex.Message);
+        Console.WriteLine(
+            "EndSession Error: " + ex.Message
+        );
     }
 }
 
@@ -129,20 +163,37 @@ public static async Task<int> VerifyAgentFromConfig()
     return userId.GetInt32();
 }
 
-    public static async Task SendIdle(DateTime start, DateTime end)
+   public static async Task SendIdle(
+    DateTime start,
+    DateTime end,
+    string appName
+)
+{
+    var data = new
     {
-        var data = new
-        {
-            user_id = UserContext.UserId,
-            start_time = start,
-            end_time = end
-        };
+        user_id = UserContext.UserId,
+        start_time = start,
+        end_time = end,
+        app_name = appName
+    };
 
-        var json = JsonSerializer.Serialize(data);
-        var content = new StringContent(json, Encoding.UTF8, "application/json");
+    var json = JsonSerializer.Serialize(data);
 
-        await client.PostAsync($"{ConfigService.GetApiBaseUrl()}/api/idle/log", content);
-    }
+    var content = new StringContent(
+        json,
+        Encoding.UTF8,
+        "application/json"
+    );
+
+    var response = await client.PostAsync(
+        $"{ConfigService.GetApiBaseUrl()}/api/idle/log",
+        content
+    );
+
+    Console.WriteLine(
+        $"Idle API Status: {response.StatusCode}"
+    );
+}
 
 public static async Task UpdateStatus(string status)
 {
@@ -185,6 +236,9 @@ public static async Task UpdateStatus(string status)
         );
     }
 }
+
+
+
 
 public static async Task SendRestrictedAlert(
     int userId,
@@ -307,6 +361,42 @@ public static async Task<AgentPolicyConfig?> GetAgentPolicyConfig()
     }
 }
 
+public static async Task SendHeartbeat()
+{
+    try
+    {
+        var token = ConfigService.GetToken();
+
+        var response =
+            await client.GetAsync(
+                $"{ConfigService.GetApiBaseUrl()}/api/agent/config?agent_token={Uri.EscapeDataString(token)}"
+            );
+
+        if (!response.IsSuccessStatusCode)
+        {
+            Console.WriteLine("Failed to fetch agent policy config.");
+            return null;
+        }
+
+        var json =
+            await response.Content.ReadAsStringAsync();
+
+        Console.WriteLine($"Agent Policy Response: {json}");
+
+        return JsonSerializer.Deserialize<AgentPolicyConfig>(
+            json
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine(
+            $"Agent Policy Error: {ex.Message}"
+        );
+
+        return null;
+    }
+}
+
 public static async Task SendScreenshot(
     byte[] imageBytes,
     DateTime capturedAt
@@ -330,20 +420,17 @@ public static async Task SendScreenshot(
             "application/json"
         );
 
-        var response = await client.PostAsync(
-            $"{ConfigService.GetApiBaseUrl()}/api/screenshots/upload",
-            content
-        );
+        var response = await client.PostAsync(url, content);
 
-        if (!response.IsSuccessStatusCode)
-        {
-            var result = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"Screenshot upload failed: {result}");
-        }
+        Console.WriteLine($"Heartbeat Status : {response.StatusCode}");
+
+        var body = await response.Content.ReadAsStringAsync();
+
+        Console.WriteLine(body);
     }
-    catch (Exception ex)
+    catch(Exception ex)
     {
-        Console.WriteLine($"SendScreenshot Error: {ex.Message}");
+        Console.WriteLine($"Heartbeat Error : {ex}");
     }
 }
 

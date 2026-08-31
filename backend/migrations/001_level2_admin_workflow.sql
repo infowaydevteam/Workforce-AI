@@ -1,7 +1,5 @@
 BEGIN;
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
 CREATE TABLE IF NOT EXISTS subscription_plans (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL UNIQUE,
@@ -49,12 +47,7 @@ ALTER TABLE teams
   ADD COLUMN IF NOT EXISTS description TEXT;
 
 ALTER TABLE users
-  ADD COLUMN IF NOT EXISTS manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS agent_token TEXT UNIQUE;
-
-UPDATE users
-SET agent_token = gen_random_uuid()::text
-WHERE agent_token IS NULL;
+  ADD COLUMN IF NOT EXISTS manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
 
 ALTER TABLE activity_logs
   ADD COLUMN IF NOT EXISTS productivity_category VARCHAR(20) DEFAULT 'neutral'

@@ -34,17 +34,39 @@ const formatDuration = (seconds) => {
 };
 
 // ---------------- DATE FORMAT ----------------
-const formatTime = (date) =>
-  new Date(date).toLocaleString("en-IN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour12: true,
-  });
+const formatTime = (date) => {
+  if (!date) return "Running";
 
-const getTodayDate = () => new Date().toISOString().split("T")[0];
+  const value = String(date);
+
+  const [datePart, timePart] = value.split(" ");
+
+  if (!datePart || !timePart) return "-";
+
+  const [year, month, day] = datePart.split("-");
+  const [hour, minute] = timePart.split(":");
+
+  const h = Number(hour);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 || 12;
+
+  const monthNames = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+
+  return `${day} ${monthNames[Number(month) - 1]} ${year}, ${String(hour12).padStart(2, "0")}:${minute} ${ampm}`;
+};
+
+const getTodayDate = () => {
+  const now = new Date();
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
 
 const shortenAppName = (name = "") => {
   if (name.length <= 10) return name;
@@ -119,6 +141,9 @@ const EmployeeDetail = () => {
     setSummary(await summaryRes.json());
     setActivityLogs(await activityRes.json());
   };
+
+  console.log("login", loginHistory);
+  console.log("activity",activityLogs);
 
   useEffect(() => {
     fetchAll(date);

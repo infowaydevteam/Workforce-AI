@@ -13,91 +13,106 @@ const Teams = () => {
     name: "",
     organization_id: "",
     department_id: "",
-    manager_id: "",
+    // manager_id: "",
     description: "",
   });
 
-const fetchTeams = async () => {
-  try {
-    const token = localStorage.getItem("token");
 
-    const res = await fetch(
-      `${API_BASE_URL}/api/teams`,
-      {
+  const getArrayData = (data) => {
+    if (Array.isArray(data)) return data;
+
+    if (Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data.organizations)) return data.organizations;
+    if (Array.isArray(data.departments)) return data.departments;
+    if (Array.isArray(data.users)) return data.users;
+    if (Array.isArray(data.teams)) return data.teams;
+
+    return [];
+  };
+
+  const fetchTeams = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(`${API_BASE_URL}/api/teams`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
-    );
+      });
 
-    const data = await res.json();
-    setTeams(data);
-  } catch (err) {
-    console.log(err);
-  }
-};
+      const data = await res.json();
 
-  // fetch orgs for dropdown
-const fetchOrgs = async () => {
-  try {
-    const token = localStorage.getItem("token");
+      setTeams(getArrayData(data));
+    } catch (err) {
+      console.log(err);
+      setTeams([]);
+    }
+  };
 
-    const res = await fetch(
-      `${API_BASE_URL}/api/organization`,
-      {
+  const fetchOrgs = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(`${API_BASE_URL}/api/organization`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
-    );
+      });
 
-    const data = await res.json();
-    setOrgs(data);
-  } catch (err) {
-    console.log(err);
-  }
-};
+      const data = await res.json();
 
-const fetchDepartments = async (organizationId = "") => {
-  try {
-    const token = localStorage.getItem("token");
-    const query = organizationId ? `?organizationId=${organizationId}` : "";
+      console.log("Organizations API:", data);
 
-    const res = await fetch(
-      `${API_BASE_URL}/api/admin-workflow/departments${query}`,
-      {
+      setOrgs(getArrayData(data));
+    } catch (err) {
+      console.log(err);
+      setOrgs([]);
+    }
+  };
+
+  const fetchDepartments = async (organizationId = "") => {
+    try {
+      const token = localStorage.getItem("token");
+      const query = organizationId
+        ? `?organizationId=${organizationId}`
+        : "";
+
+      const res = await fetch(
+        `${API_BASE_URL}/api/admin-workflow/departments${query}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+      console.log("department", data)
+      setDepartments(getArrayData(data));
+    } catch (err) {
+      console.log(err);
+      setDepartments([]);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(`${API_BASE_URL}/api/employee`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
-    );
+      });
 
-    const data = await res.json();
-    setDepartments(data);
-  } catch (err) {
-    console.log(err);
-  }
-};
-
-const fetchUsers = async () => {
-  try {
-    const token = localStorage.getItem("token");
-
-    const res = await fetch(
-      `${API_BASE_URL}/api/employee`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    const data = await res.json();
-    setUsers(data);
-  } catch (err) {
-    console.log(err);
-  }
-};
+      const data = await res.json();
+console.log("users",data)
+      setUsers(getArrayData(data));
+    } catch (err) {
+      console.log(err);
+      setUsers([]);
+    }
+  };
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -123,14 +138,14 @@ const handleAdd = async (e) => {
       body: JSON.stringify(form),
     });
 
-    setShowModal(false);
-    setForm({
-      name: "",
-      organization_id: "",
-      department_id: "",
-      manager_id: "",
-      description: "",
-    });
+      setShowModal(false);
+      setForm({
+        name: "",
+        organization_id: "",
+        department_id: "",
+        // manager_id: "",
+        description: "",
+      });
 
     fetchTeams();
   } catch (err) {
@@ -203,9 +218,9 @@ const handleDelete = async (id) => {
                   Department
                 </th>
 
-                <th className="text-left p-4 text-xs uppercase tracking-wider text-slate-500">
+                {/* <th className="text-left p-4 text-xs uppercase tracking-wider text-slate-500">
                   Manager
-                </th>
+                </th> */}
 
                 <th className="text-center p-4 text-xs uppercase tracking-wider text-slate-500">
                   Action
@@ -248,9 +263,9 @@ const handleDelete = async (id) => {
                     {team.department_name || "-"}
                   </td>
 
-                  <td className="p-4 text-slate-600">
+                  {/* <td className="p-4 text-slate-600">
                     {team.manager_name || "-"}
-                  </td>
+                  </td> */}
 
                   <td className="p-4 text-center">
                     <button
@@ -301,7 +316,7 @@ const handleDelete = async (id) => {
                       ...form,
                       organization_id: e.target.value,
                       department_id: "",
-                      manager_id: "",
+                      // manager_id: "",
                     })
                   }
                 >
@@ -345,7 +360,7 @@ const handleDelete = async (id) => {
                     ))}
                 </select>
 
-                <select
+                {/* <select
                   className=" w-full border border-slate-300 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
                   value={form.manager_id}
                   onChange={(e) =>
@@ -360,7 +375,7 @@ const handleDelete = async (id) => {
                   </option>
 
                   {users
-                    .filter((user) => user.role === "manager" && String(user.organization_id) === String(form.organization_id))
+                    .filter((user) => user.role === "admin" && String(user.organization_id) === String(form.organization_id))
                     .map((user) => (
                       <option
                         key={user.id}
@@ -369,7 +384,7 @@ const handleDelete = async (id) => {
                         {user.name}
                       </option>
                     ))}
-                </select>
+                </select> */}
 
                 <textarea
                   placeholder="Description"

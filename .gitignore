@@ -26,4 +26,3 @@ IWF
 *.sqlite
 *.db
 *.zip
-!backend/agent-updates/**/*.zip

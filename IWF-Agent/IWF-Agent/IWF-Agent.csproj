@@ -3,10 +3,12 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
-    <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>IWF_Agent</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <!-- Windows Forms -->
+    <UseWindowsForms>true</UseWindowsForms>
 
     <!-- Publish Settings -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -15,12 +17,11 @@
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
 
-    <!-- Trim mat use karna abhi -->
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Win32.SystemEvents" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Win32.SystemEvents" Version="10.0.11" />
     <PackageReference Include="System.Net.Http.Json" Version="10.0.8" />
   </ItemGroup>
 

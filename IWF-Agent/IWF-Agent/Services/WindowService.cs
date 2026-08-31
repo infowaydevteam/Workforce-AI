@@ -30,13 +30,19 @@ public class WindowService
             if (handle == IntPtr.Zero)
                 return "Unknown";
 
-            GetWindowThreadProcessId(handle, out uint processId);
+            GetWindowThreadProcessId(
+                handle,
+                out uint processId
+            );
 
-            Process process = Process.GetProcessById((int)processId);
+            Process process =
+                Process.GetProcessById((int)processId);
 
-            return process.ProcessName switch
+            string appName = process.ProcessName switch
             {
                 "chrome" => "Google Chrome",
+                "msedge" => "Microsoft Edge",
+                "firefox" => "Mozilla Firefox",
                 "Code" => "Visual Studio Code",
                 "EXCEL" => "Microsoft Excel",
                 "WINWORD" => "Microsoft Word",
@@ -44,6 +50,35 @@ public class WindowService
                 "Teams" => "Microsoft Teams",
                 _ => process.ProcessName
             };
+
+            string title = GetActiveWindowTitle();
+
+            // Browser ke liye title bhi app_name me add hoga
+            if (
+                (
+                    process.ProcessName.Equals(
+                        "chrome",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                    ||
+                    process.ProcessName.Equals(
+                        "msedge",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                    ||
+                    process.ProcessName.Equals(
+                        "firefox",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                &&
+                !string.IsNullOrWhiteSpace(title)
+            )
+            {
+                return $"{appName} - {title}";
+            }
+
+            return appName;
         }
         catch
         {
@@ -65,7 +100,11 @@ public class WindowService
             if (handle == IntPtr.Zero)
                 return "";
 
-            if (GetWindowText(handle, buffer, nChars) > 0)
+            if (GetWindowText(
+                    handle,
+                    buffer,
+                    nChars
+                ) > 0)
             {
                 return buffer.ToString();
             }

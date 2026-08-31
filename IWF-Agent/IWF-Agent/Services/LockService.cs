@@ -10,7 +10,6 @@ public static class LockService
         Console.WriteLine("Lock Service Started");
     }
 
-
     private static async void OnSessionSwitch(
         object sender,
         SessionSwitchEventArgs e
@@ -22,41 +21,33 @@ public static class LockService
             {
                 case SessionSwitchReason.SessionLock:
 
-    Console.WriteLine("Windows Locked");
+                    Console.WriteLine("Windows Locked");
 
-    UserSessionState.IsLocked = true;
+                    UserSessionState.IsLocked = true;
 
-    await ApiService.UpdateStatus("Offline");
+                    await ActivityService.HandleLocked();
 
-    await ApiService.EndSession();
-
-    break;
+                    break;
 
 
-case SessionSwitchReason.SessionUnlock:
+                case SessionSwitchReason.SessionUnlock:
 
-    Console.WriteLine("Windows Unlocked");
+                    Console.WriteLine("Windows Unlocked");
 
-    UserSessionState.IsLocked = false;
+                    UserSessionState.IsLocked = false;
 
-    ActivityService.ResetIdle();
+                    await ActivityService.HandleUnlocked();
 
-    await ApiService.UpdateStatus("Online");
-
-    await ApiService.StartSession();
-
-    break;
+                    break;
             }
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             Console.WriteLine(
                 $"LockService Error: {ex.Message}"
             );
         }
     }
-
-
 
     public static void Stop()
     {

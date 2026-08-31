@@ -55,7 +55,7 @@ const AdminPolicies = () => {
   const [departmentForm, setDepartmentForm] = useState({
     name: "",
     description: "",
-    manager_id: "",
+    // manager_id: "",
   });
 
   const token = localStorage.getItem("token");
@@ -64,7 +64,7 @@ const AdminPolicies = () => {
     () =>
       users.filter(
         (user) =>
-          user.role === "manager" &&
+          user.role === "admin" &&
           String(user.organization_id) === String(selectedOrgId)
       ),
     [users, selectedOrgId]
@@ -245,21 +245,28 @@ const AdminPolicies = () => {
   };
 
   const addDepartment = async (e) => {
-    e.preventDefault();
-    try {
-      await fetchJson(`${API_BASE_URL}/api/admin-workflow/departments`, {
-        method: "POST",
-        body: JSON.stringify({
-          organization_id: selectedOrgId,
-          ...departmentForm,
-        }),
-      });
-      setDepartmentForm({ name: "", description: "", manager_id: "" });
-      fetchSetup(selectedOrgId);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  e.preventDefault();
+
+  try {
+    await fetchJson(`${API_BASE_URL}/api/admin-workflow/departments`, {
+      method: "POST",
+      body: JSON.stringify({
+        organization_id: selectedOrgId,
+        name: departmentForm.name,
+        description: departmentForm.description,
+      }),
+    });
+
+    setDepartmentForm({
+      name: "",
+      description: "",
+    });
+
+    fetchSetup(selectedOrgId);
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   const deleteDepartment = async (id) => {
     await fetchJson(`${API_BASE_URL}/api/admin-workflow/departments/${id}`, {
@@ -631,7 +638,7 @@ const AdminPolicies = () => {
                 className="border border-slate-300 px-3 py-2 rounded-xl"
                 placeholder="Description"
               />
-              <select
+              {/* <select
                 value={departmentForm.manager_id}
                 onChange={(e) => setDepartmentForm({ ...departmentForm, manager_id: e.target.value })}
                 className="border border-slate-300 px-3 py-2 rounded-xl"
@@ -642,7 +649,7 @@ const AdminPolicies = () => {
                     {manager.name}
                   </option>
                 ))}
-              </select>
+              </select> */}
               <button className="flex items-center justify-center gap-2 bg-indigo-600 text-white rounded-xl">
                 <Plus size={16} />
                 Add

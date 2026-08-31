@@ -18,6 +18,18 @@ const Organizations = () => {
     working_end: "17:00",
   });
 
+   const getArrayData = (data) => {
+    if (Array.isArray(data)) return data;
+
+    if (Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data.organizations)) return data.organizations;
+    if (Array.isArray(data.departments)) return data.departments;
+    if (Array.isArray(data.users)) return data.users;
+    if (Array.isArray(data.teams)) return data.teams;
+
+    return [];
+  };
+
   // Fetch organizations
 const fetchOrgs = async () => {
   try {
@@ -33,9 +45,54 @@ const fetchOrgs = async () => {
     );
 
     const data = await res.json();
-    setOrgs(data);
+
+    console.log("Organizations API response:", data);
+
+    if (Array.isArray(data)) {
+      setOrgs(data);
+    } else if (Array.isArray(data.data)) {
+      setOrgs(data.data);
+    } else if (Array.isArray(data.organizations)) {
+      setOrgs(data.organizations);
+    } else {
+      console.error("Organizations is not an array:", data);
+      setOrgs([]);
+    }
   } catch (err) {
-    console.log(err);
+    console.error("Failed to fetch organizations:", err);
+    setOrgs([]);
+  }
+};
+
+const fetchPlans = async () => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(
+      `${API_BASE_URL}/api/admin-workflow/subscription-plans`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await res.json();
+
+    console.log("Plans API response:", data);
+
+    if (Array.isArray(data)) {
+      setPlans(data);
+    } else if (Array.isArray(data.data)) {
+      setPlans(data.data);
+    } else if (Array.isArray(data.plans)) {
+      setPlans(data.plans);
+    } else {
+      setPlans([]);
+    }
+  } catch (err) {
+    console.error("Failed to fetch plans:", err);
+    setPlans([]);
   }
 };
 

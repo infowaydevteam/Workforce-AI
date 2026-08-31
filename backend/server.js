@@ -13,14 +13,10 @@ const idleRoutes = require("./route/idleRoutes");
 const agentRoutes = require("./route/agentRoutes");
 const alertRoutes = require("./route/alertRoute");
 const restrictedRoute = require("./route/restrictedRoute");
-const heartbeatRoute = require("./route/heartbeatRoute");
 const adminWorkflowRoutes = require("./route/adminWorkflowRoute");
-const startOfflineChecker = require("./services/offlineChecker");
 const teamReportRoutes = require("./route/teamsReportRouter");
-const websiteRoute = require("./route/websiteRoute");
-const screenshotRoutes = require("./route/screenshotRoute");
-const startScreenshotCleanup = require("./services/screenshotCleanupService");
-
+const startOfflineChecker = require("./services/offlineChecker");
+const heartbeatRoute = require("./route/heartbeatRoute");
 const app = express();
 
 app.use(cors());
@@ -43,12 +39,8 @@ app.use(
 "/api/team-report",
 teamReportRoutes
 );
-app.use("/api/websites", websiteRoute);
-app.use("/api/screenshots", screenshotRoutes);
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);
 });
-
 startOfflineChecker();
-startScreenshotCleanup();
