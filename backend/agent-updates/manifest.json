@@ -3,12 +3,12 @@
   "platforms": {
     "windows": {
       "enabled": true,
-      "latest_version": "1.0.0",
+      "latest_version": "1.0.4",
       "mandatory": false,
-      "package_name": "IWF-Agent-Setup-1.0.0.zip",
-      "checksum_sha256": "6ff1ffc6ccff725e78556471df051078e15fd334fc8a895de3bb745bb8f1c20a",
+      "package_name": "IWF-Agent-Setup-1.0.4.zip",
+      "checksum_sha256": "fdaac258b661de0699f9c249c93159bbd2e2e3da94de65135ea9fc750ce6cf68",
       "release_notes": [
-        "Windows agent 1.0.0"
+        "Windows agent 1.0.4"
       ]
     },
     "macos": {
@@ -18,7 +18,7 @@
       "package_name": "IWF-Agent-1.0.0.pkg",
       "checksum_sha256": "679b2304509d37a77be2d2fa2de338a279f90cebc2430ddc5b305522e2228e53",
       "release_notes": [
-        "macOS agent 1.0.0"
+        "macOS agent 1.0.9"
       ]
     }
   }

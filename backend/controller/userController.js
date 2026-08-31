@@ -3,35 +3,156 @@ const pool = require("../db");
 // Get All Users
 const getUsers = async (req, res) => {
   try {
-    const result = await pool.query(`
-     SELECT
-  users.id,
-  users.name,
-  users.email,
-  users.role,
-  users.status,
-  users.agent_token,
-  users.organization_id,
-  users.team_id,
-  users.manager_id,
-  organizations.name AS organization_name,
-  teams.name AS team_name,
-  managers.name AS manager_name
-FROM users
-LEFT JOIN organizations
-  ON users.organization_id = organizations.id
-LEFT JOIN teams
-  ON users.team_id = teams.id
-LEFT JOIN users managers
-  ON users.manager_id = managers.id
-WHERE users.role != 'superadmin'
-ORDER BY users.id DESC
-    `);
+    const role = String(req.user?.role || "").toLowerCase();
 
-    res.status(200).json(result.rows);
+    const userId =
+      req.user?.id ??
+      req.user?.user_id ??
+      req.user?.userId;
+
+    console.log("========== GET USERS ==========");
+    console.log("REQ.USER:", req.user);
+    console.log("ROLE:", role);
+    console.log("USER ID:", userId);
+
+    let query = `
+      SELECT
+        users.id,
+        users.name,
+        users.email,
+        users.role,
+        users.status,
+        users.agent_token,
+        users.organization_id,
+        users.team_id,
+        users.manager_id,
+
+        organizations.name AS organization_name,
+        organizations.timezone AS timezone,
+        teams.name AS team_name,
+        managers.name AS manager_name
+
+      FROM users
+
+      LEFT JOIN organizations
+        ON users.organization_id = organizations.id
+
+      LEFT JOIN teams
+        ON users.team_id = teams.id
+
+      LEFT JOIN users managers
+        ON users.manager_id = managers.id
+
+      WHERE users.role != 'superadmin'
+    `;
+
+    const values = [];
+
+    // =====================================================
+    // ADMIN
+    // =====================================================
+    if (role === "admin") {
+
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "User ID not found in token",
+        });
+      }
+
+      // Admin ki organization aur team DB se nikalo
+      const adminResult = await pool.query(
+        `
+        SELECT
+          organization_id,
+          team_id
+        FROM users
+        WHERE id = $1
+        `,
+        [userId]
+      );
+
+      if (adminResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Admin user not found",
+        });
+      }
+
+      const adminOrganizationId =
+        adminResult.rows[0].organization_id;
+
+      const adminTeamId =
+        adminResult.rows[0].team_id;
+
+      console.log(
+        "ADMIN ORGANIZATION:",
+        adminOrganizationId
+      );
+
+      console.log(
+        "ADMIN TEAM:",
+        adminTeamId
+      );
+
+      if (!adminOrganizationId) {
+        return res.status(400).json({
+          success: false,
+          message: "Admin is not assigned to any organization",
+        });
+      }
+
+      // ===================================================
+      // ADMIN -> SAME ORGANIZATION
+      // ===================================================
+      query += `
+        AND users.organization_id = $1
+      `;
+
+      values.push(adminOrganizationId);
+
+      // ===================================================
+      // ADMIN -> SAME TEAM
+      // ===================================================
+      if (adminTeamId) {
+        query += `
+          AND users.team_id = $2
+        `;
+
+        values.push(adminTeamId);
+      }
+
+      // Admin khud ko bhi list me rakhna hai ya nahi
+      // requirement ke according yaha exclude nahi kiya hai.
+    }
+
+    // =====================================================
+    // SUPERADMIN
+    // =====================================================
+    // Superadmin ke liye koi organization/team filter nahi.
+    // Sabhi organizations ke users aayenge.
+    
+    query += `
+      ORDER BY users.id DESC
+    `;
+
+    console.log("GET USERS QUERY:", query);
+    console.log("GET USERS VALUES:", values);
+
+    const result = await pool.query(query, values);
+
+    console.log("USERS COUNT:", result.rows.length);
+
+    return res.status(200).json(result.rows);
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Failed to fetch users" });
+    console.error("GET USERS ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch users",
+      error: error.message,
+    });
   }
 };
 
@@ -165,7 +286,57 @@ const updateStatus = async (req, res) => {
   }
 };
 
-// controller
+
+// const updateStatus = async (req, res) => {
+//   try {
+//     const {
+//       user_id,
+//       status,
+//       last_active
+//     } = req.body;
+
+//     console.log("STATUS REQUEST:", req.body);
+
+//     const formattedStatus =
+//       status.charAt(0).toUpperCase() +
+//       status.slice(1).toLowerCase();
+
+//     const normalizedStatus =
+//       formattedStatus === "Paused"
+//         ? "Offline"
+//         : formattedStatus;
+
+//     const result = await pool.query(
+//       `
+//       UPDATE users
+//       SET
+//         status = $1,
+//         last_active = $2
+//       WHERE id = $3
+//       RETURNING *
+//       `,
+//       [
+//         normalizedStatus,
+//         last_active,
+//         user_id
+//       ]
+//     );
+
+//     res.json({
+//       success: true,
+//       data: result.rows[0],
+//     });
+
+//   } catch (err) {
+//     console.error("UPDATE STATUS ERROR:", err);
+
+//     res.status(500).json({
+//       success: false,
+//       error: err.message,
+//     });
+//   }
+// };
+
 const getEmployeeById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -201,13 +372,51 @@ const getEmployeeById = async (req, res) => {
   }
 };
 
+// const getLoginHistory = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const { date } = req.query;
+
+//     let query = `
+//       SELECT id, login_time, logout_time, total_duration
+//       FROM sessions
+//       WHERE user_id = $1
+//     `;
+
+//     const params = [id];
+
+//     if (date) {
+//       query += ` AND DATE(login_time) = $2`;
+//       params.push(date);
+//     }
+
+//     query += ` ORDER BY login_time DESC`;
+
+//     const result = await pool.query(query, params);
+
+//     res.json(result.rows);
+//   } catch (err) {
+//     console.log(err);
+//     res.status(500).json({ message: "Error fetching login history" });
+//   }
+// };
+
 const getLoginHistory = async (req, res) => {
   try {
     const { id } = req.params;
     const { date } = req.query;
 
+    console.log("LOGIN HISTORY =>", {
+      userId: id,
+      date,
+    });
+
     let query = `
-      SELECT id, login_time, logout_time, total_duration
+      SELECT
+        id,
+        TO_CHAR(login_time, 'YYYY-MM-DD HH24:MI:SS.MS') AS login_time,
+        TO_CHAR(logout_time, 'YYYY-MM-DD HH24:MI:SS.MS') AS logout_time,
+        total_duration
       FROM sessions
       WHERE user_id = $1
     `;
@@ -221,12 +430,22 @@ const getLoginHistory = async (req, res) => {
 
     query += ` ORDER BY login_time DESC`;
 
+    console.log("QUERY =>", query);
+    console.log("PARAMS =>", params);
+
     const result = await pool.query(query, params);
 
+    console.log("LOGIN HISTORY RESULT =>", result.rows);
+
     res.json(result.rows);
+
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: "Error fetching login history" });
+    console.error("LOGIN HISTORY ERROR:", err);
+
+    res.status(500).json({
+      success: false,
+      message: "Error fetching login history",
+    });
   }
 };
 
@@ -305,6 +524,47 @@ const getActivitySummary = async (req, res) => {
   }
 };
 
+
+// const getActivityLogs = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const { date } = req.query;
+
+//     let query = `
+//       SELECT
+//         app_name,
+//         MIN(start_time) AS start_time,
+//         MAX(end_time) AS end_time,
+//         SUM(GREATEST(duration, 0)) AS duration
+//       FROM activity_logs
+//       WHERE user_id = $1
+//     `;
+
+//     const params = [id];
+
+//     if (date) {
+//       query += ` AND DATE(start_time) = $2`;
+//       params.push(date);
+//     }
+
+//     query += `
+//       GROUP BY app_name
+//       ORDER BY SUM(GREATEST(duration, 0)) DESC
+//     `;
+
+//     const result = await pool.query(query, params);
+
+//     res.json(result.rows);
+
+//   } catch (err) {
+//     console.log(err);
+//     res.status(500).json({
+//       message: "Failed to fetch activity logs"
+//     });
+//   }
+// };
+
+
 const getActivityLogs = async (req, res) => {
   try {
     const { id } = req.params;
@@ -312,10 +572,12 @@ const getActivityLogs = async (req, res) => {
 
     let query = `
       SELECT
+        id,
         app_name,
-        MIN(start_time) AS start_time,
-        MAX(end_time) AS end_time,
-        SUM(GREATEST(duration, 0)) AS duration
+        TO_CHAR(start_time, 'YYYY-MM-DD HH24:MI:SS.MS') AS start_time,
+        TO_CHAR(end_time, 'YYYY-MM-DD HH24:MI:SS.MS') AS end_time,
+        GREATEST(duration, 0) AS duration,
+        productivity_category
       FROM activity_logs
       WHERE user_id = $1
     `;
@@ -323,13 +585,14 @@ const getActivityLogs = async (req, res) => {
     const params = [id];
 
     if (date) {
-      query += ` AND DATE(start_time) = $2`;
+      query += `
+        AND DATE(start_time) = $2
+      `;
       params.push(date);
     }
 
     query += `
-      GROUP BY app_name
-      ORDER BY SUM(GREATEST(duration, 0)) DESC
+      ORDER BY start_time DESC
     `;
 
     const result = await pool.query(query, params);
@@ -337,9 +600,12 @@ const getActivityLogs = async (req, res) => {
     res.json(result.rows);
 
   } catch (err) {
-    console.log(err);
+    console.error("GET ACTIVITY LOGS ERROR:", err);
+
     res.status(500).json({
-      message: "Failed to fetch activity logs"
+      success: false,
+      message: "Failed to fetch activity logs",
+      error: err.message
     });
   }
 };

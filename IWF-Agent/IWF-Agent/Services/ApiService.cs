@@ -30,23 +30,53 @@ public class ApiService
         await client.PostAsync($"{ConfigService.GetApiBaseUrl()}/api/activity/log", content);
     }
 
-    public static async Task StartSession()
+public static async Task StartSession(DateTime loginTime)
+{
+    var data = new
     {
-        var data = new {user_id = UserContext.UserId};
+        user_id = UserContext.UserId,
+        login_time = loginTime
+    };
 
-        var json = JsonSerializer.Serialize(data);
-        var content = new StringContent(json, Encoding.UTF8, "application/json");
+    var json = JsonSerializer.Serialize(data);
 
-        await client.PostAsync($"{ConfigService.GetApiBaseUrl()}/api/session/start", content);
-    }
+    var content = new StringContent(
+        json,
+        Encoding.UTF8,
+        "application/json"
+    );
 
-   public static async Task EndSession()
+    var response = await client.PostAsync(
+        $"{ConfigService.GetApiBaseUrl()}/api/session/start",
+        content
+    );
+
+    Console.WriteLine(
+        $"Start Session Status: {response.StatusCode}"
+    );
+
+    var result = await response.Content.ReadAsStringAsync();
+
+    Console.WriteLine(
+        $"Start Session Response: {result}"
+    );
+}
+
+
+
+
+  public static async Task EndSession(DateTime logoutTime)
 {
     try
     {
-        var data = new {user_id = UserContext.UserId};
+        var data = new
+        {
+            user_id = UserContext.UserId,
+            logout_time = logoutTime
+        };
 
         var json = JsonSerializer.Serialize(data);
+
         var content = new StringContent(
             json,
             Encoding.UTF8,
@@ -58,7 +88,9 @@ public class ApiService
             content
         );
 
-        Console.WriteLine($"End Session Status: {response.StatusCode}");
+        Console.WriteLine(
+            $"End Session Status: {response.StatusCode}"
+        );
 
         var result = await response.Content.ReadAsStringAsync();
 
@@ -66,7 +98,9 @@ public class ApiService
     }
     catch (Exception ex)
     {
-        Console.WriteLine("EndSession Error: " + ex.Message);
+        Console.WriteLine(
+            "EndSession Error: " + ex.Message
+        );
     }
 }
 
@@ -202,6 +236,9 @@ public static async Task UpdateStatus(string status)
         );
     }
 }
+
+
+
 
 public static async Task SendRestrictedAlert(
     int userId,

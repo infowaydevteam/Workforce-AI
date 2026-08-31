@@ -58,37 +58,48 @@ static bool emailSent = false;
         }
     }
 
-    public static void Start()
+  public static async Task Start()
+{
+    Console.WriteLine("Activity Service Started");
+
+    DateTime now = GetPolicyNow();
+
+    lastWindow = WindowService.GetActiveWindow();
+    lastWindowTitle = WindowService.GetActiveWindowTitle();
+    lastActivitySave = now;
+
+    // Initial policy check
+    if (!IsMonitoringAllowed(now, out string pauseReason))
     {
-        Console.WriteLine("Activity Service Started");
-
-        lastWindow =
-            WindowService.GetActiveWindow();
-
-        lastWindowTitle =
-            WindowService.GetActiveWindowTitle();
-
-        lastActivitySave =
-            DateTime.Now;
+        monitoringPaused = true;
+        lastPauseReason = pauseReason;
 
         Console.WriteLine(
-            $"Initial Window: {lastWindow}"
+            $"Monitoring waiting: {pauseReason}"
         );
 
-        _ = ApiService.UpdateStatus(
-            "Online"
-        );
-
-        timer = new System.Timers.Timer(
-            5000
-        );
-
-        timer.Elapsed += Track;
-
-        timer.AutoReset = true;
-
-        timer.Start();
+        await ApiService.UpdateStatus("Offline");
     }
+    else
+    {
+        monitoringPaused = false;
+        lastPauseReason = "";
+
+        await StartMonitoringSession(now);
+    }
+
+    // IMPORTANT:
+    // Timer ALWAYS starts.
+    // So if agent starts before 9 PM,
+    // it can automatically start at 9 PM.
+    timer = new System.Timers.Timer(5000);
+
+    timer.Elapsed += Track;
+    timer.AutoReset = true;
+    timer.Start();
+
+    Console.WriteLine("Activity timer started.");
+}
 
     private static async void Track(
         object? sender,
@@ -97,47 +108,80 @@ static bool emailSent = false;
     {
         try
         {
+  DateTime now = GetPolicyNow();
 
-            string currentWindow =
-                WindowService.GetActiveWindow();
+        // =========================
+        // WINDOWS LOCKED
+        // =========================
 
-                string title =
-    WindowService.GetActiveWindowTitle();
-
-    if (UserSessionState.IsLocked)
-{
-    Console.WriteLine("Windows is locked. Skipping activity tracking.");
-    return;
-}
-
-            if (!IsMonitoringAllowed(GetPolicyNow(), out string pauseReason))
-            {
-                await PauseMonitoring(currentWindow, title, pauseReason);
-                return;
-            }
-
-            if (monitoringPaused)
-            {
-                monitoringPaused = false;
-                lastPauseReason = "";
-                lastWindow = currentWindow;
-                lastWindowTitle = title;
-                lastActivitySave = DateTime.Now;
-
-                await ApiService.UpdateStatus("Online");
-
-                Console.WriteLine("Monitoring resumed.");
-            }
-
-            int idleSeconds = IdleHelper.GetIdleTime();
-
-Console.WriteLine($"Idle Seconds: {idleSeconds}");
-
-bool idle = idleSeconds >= monitoringPolicy.IdleThresholdSeconds;
-
+        if (UserSessionState.IsLocked)
+        {
             Console.WriteLine(
-                $"Idle: {idle} | Window: {currentWindow}"
+                "Windows is locked. Skipping activity tracking."
             );
+
+            return;
+        }
+
+        string currentWindow =
+            WindowService.GetActiveWindow();
+
+        string title =
+            WindowService.GetActiveWindowTitle();
+
+
+        // =========================
+        // POLICY CHECK
+        // =========================
+
+        if (!IsMonitoringAllowed(
+            now,
+            out string pauseReason))
+        {
+            await PauseMonitoring(
+                currentWindow,
+                title,
+                pauseReason
+            );
+
+            return;
+        }
+
+
+        // =========================
+        // MONITORING RESUME
+        // =========================
+
+        if (monitoringPaused)
+        {
+            Console.WriteLine(
+                $"Monitoring allowed now. Resuming: {now}"
+            );
+
+            await StartMonitoringSession(now);
+
+            return;
+        }
+
+
+        // =========================
+        // IDLE CHECK
+        // =========================
+
+        int idleSeconds =
+            IdleHelper.GetIdleTime();
+
+        Console.WriteLine(
+            $"Idle Seconds: {idleSeconds}"
+        );
+
+        bool idle =
+            idleSeconds >=
+            monitoringPolicy.IdleThresholdSeconds;
+
+        Console.WriteLine(
+            $"Idle: {idle} | Window: {currentWindow}"
+        );
 
             // =====================
             // IDLE START
@@ -149,7 +193,7 @@ bool idle = idleSeconds >= monitoringPolicy.IdleThresholdSeconds;
                     isIdle = true;
 
                     idleStartTime =
-                        DateTime.Now;
+                        now;
                          idleAppName = lastWindow;
 
                     Console.WriteLine(
@@ -161,7 +205,7 @@ bool idle = idleSeconds >= monitoringPolicy.IdleThresholdSeconds;
                         await ApiService.SendActivity(
                             lastWindow,
                             lastActivitySave,
-                            DateTime.Now,
+                            now,
                             ProductivityRuleService.GetCategory(
                                 lastWindow,
                                 lastWindowTitle
@@ -190,12 +234,12 @@ bool idle = idleSeconds >= monitoringPolicy.IdleThresholdSeconds;
 
                 await ApiService.SendIdle(
                     idleStartTime,
-                    DateTime.Now,
+                    now,
                     idleAppName
                 );
 
                 lastActivitySave =
-                    DateTime.Now;
+                    now;
 
                 await ApiService.UpdateStatus(
                     "Online"
@@ -216,7 +260,7 @@ bool idle = idleSeconds >= monitoringPolicy.IdleThresholdSeconds;
                     await ApiService.SendActivity(
                         lastWindow,
                         lastActivitySave,
-                        DateTime.Now,
+                        now,
                         ProductivityRuleService.GetCategory(
                             lastWindow,
                             lastWindowTitle
@@ -231,7 +275,7 @@ bool idle = idleSeconds >= monitoringPolicy.IdleThresholdSeconds;
                     title;
 
                 lastActivitySave =
-                    DateTime.Now;
+                    now;
 
                 return;
             }
@@ -269,7 +313,7 @@ if (!string.IsNullOrEmpty(restrictedName))
     {
         restrictedRunning = true;
         restrictedSite = restrictedName;
-        restrictedStartTime = DateTime.Now;
+        restrictedStartTime = now;
         emailSent = false;
 
         Console.WriteLine($"Started Timer for {restrictedName}");
@@ -277,18 +321,28 @@ if (!string.IsNullOrEmpty(restrictedName))
     else if (restrictedSite == restrictedName)
     {
         double minutes =
-            (DateTime.Now - restrictedStartTime).TotalMinutes;
+            (now - restrictedStartTime).TotalMinutes;
 
         Console.WriteLine(
             $"{restrictedName} Running: {minutes:F1} min"
         );
 
-        if (minutes >= 0.2 && !emailSent)
-        {
-            emailSent = true;
+       if (minutes >= 0.2)
+{
+    Console.WriteLine(
+        $"ALERT CHECK => Site: {restrictedName}, Minutes: {minutes:F2}, EmailSent: {emailSent}"
+    );
 
+    if (!emailSent)
+    {
+        Console.WriteLine(
+            $"Sending Restricted Alert: {restrictedName}"
+        );
+
+        try
+        {
             Console.WriteLine(
-                $"Sending Restricted Alert: {restrictedName}"
+                $"BEFORE EMAIL API => UserId: {UserContext.UserId}, Site: {restrictedName}, Minutes: {minutes:F2}"
             );
 
             await ApiService.SendRestrictedAlert(
@@ -296,7 +350,21 @@ if (!string.IsNullOrEmpty(restrictedName))
                 restrictedName,
                 minutes
             );
+
+            emailSent = true;
+
+            Console.WriteLine(
+                $"AFTER EMAIL API => emailSent: {emailSent}"
+            );
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"Restricted alert failed: {ex}"
+            );
+        }
+    }
+}
     }
 }
 else
@@ -319,7 +387,7 @@ else
             // =====================
             double activeSeconds =
                 (
-                    DateTime.Now -
+                    now -
                     lastActivitySave
                 ).TotalSeconds;
 
@@ -330,7 +398,7 @@ else
                     await ApiService.SendActivity(
                         currentWindow,
                         lastActivitySave,
-                        DateTime.Now,
+                        now,
                         ProductivityRuleService.GetCategory(
                             currentWindow,
                             title
@@ -343,7 +411,7 @@ else
                 );
 
                 lastActivitySave =
-                    DateTime.Now;
+                    now;
             }
         }
         catch (Exception ex)
@@ -360,11 +428,19 @@ public static async Task Stop()
     {
         timer?.Stop();
 
-        DateTime now = DateTime.Now;
+        DateTime now = GetPolicyNow();
 
         if (monitoringPaused)
         {
-            Console.WriteLine("Agent stopped while monitoring was paused.");
+            Console.WriteLine(
+                "Agent stopped while monitoring was paused."
+            );
+        }
+        else if (UserSessionState.IsLocked)
+        {
+            Console.WriteLine(
+                "Agent stopped while Windows was locked."
+            );
         }
         else if (isIdle)
         {
@@ -376,19 +452,26 @@ public static async Task Stop()
         }
         else
         {
-            if ((now - lastActivitySave).TotalSeconds > 1)
+            if (
+                monitoringPolicy.AppTrackingEnabled &&
+                (now - lastActivitySave).TotalSeconds > 1
+            )
             {
                 await ApiService.SendActivity(
                     lastWindow,
                     lastActivitySave,
-                    now
+                    now,
+                    ProductivityRuleService.GetCategory(
+                        lastWindow,
+                        lastWindowTitle
+                    )
                 );
             }
         }
 
         await ApiService.UpdateStatus("Offline");
 
-        await ApiService.EndSession();
+        await ApiService.EndSession(DateTime.Now);
 
         Console.WriteLine("Agent Stopped");
     }
@@ -400,61 +483,132 @@ public static async Task Stop()
     }
 }
 
-private static bool IsMonitoringAllowed(DateTime now, out string reason)
+private static bool IsMonitoringAllowed(
+    DateTime now,
+    out string reason
+)
 {
     reason = "";
 
-    string today = now.DayOfWeek.ToString();
+    // =========================
+    // SHIFT TIME
+    // =========================
 
-    bool isWorkingDay = organizationPolicy.WorkingDays.Any(
-        day => string.Equals(day, today, StringComparison.OrdinalIgnoreCase)
-    );
-
-    if (!isWorkingDay)
-    {
-        reason = $"outside configured working days ({today})";
-        return false;
-    }
-
-    string todayDate = now.ToString("yyyy-MM-dd");
-
-    bool isHoliday = organizationPolicy.Holidays.Any(
-        holiday => string.Equals(
-            NormalizeDate(holiday),
-            todayDate,
-            StringComparison.OrdinalIgnoreCase
-        )
-    );
-
-    if (isHoliday)
-    {
-        reason = $"company holiday ({todayDate})";
-        return false;
-    }
-
-    TimeSpan currentTime = now.TimeOfDay;
-
-    if (!TimeSpan.TryParse(organizationPolicy.WorkingStart, out TimeSpan start))
+    if (!TimeSpan.TryParse(
+        organizationPolicy.WorkingStart,
+        out TimeSpan start))
     {
         start = new TimeSpan(9, 0, 0);
     }
 
-    if (!TimeSpan.TryParse(organizationPolicy.WorkingEnd, out TimeSpan end))
+    if (!TimeSpan.TryParse(
+        organizationPolicy.WorkingEnd,
+        out TimeSpan end))
     {
         end = new TimeSpan(17, 0, 0);
     }
 
-    bool isWithinHours =
-        start <= end
-            ? currentTime >= start && currentTime <= end
-            : currentTime >= start || currentTime <= end;
+
+    TimeSpan currentTime = now.TimeOfDay;
+
+    bool overnight = start > end;
+
+    bool isWithinHours;
+
+    if (!overnight)
+    {
+        isWithinHours =
+            currentTime >= start &&
+            currentTime <= end;
+    }
+    else
+    {
+        isWithinHours =
+            currentTime >= start ||
+            currentTime <= end;
+    }
+
+
+    // =========================
+    // OUTSIDE SHIFT
+    // =========================
 
     if (!isWithinHours)
     {
         reason =
-            $"outside configured working hours ({organizationPolicy.WorkingStart}-{organizationPolicy.WorkingEnd})";
+            $"outside configured working hours " +
+            $"({organizationPolicy.WorkingStart}-" +
+            $"{organizationPolicy.WorkingEnd})";
+
         return false;
     }
+
+
+    // =========================
+    // DETERMINE SHIFT DATE
+    // =========================
+
+    DateTime shiftDate = now.Date;
+
+    // Example:
+    // Thursday 21:00 -> Thursday shift
+    // Friday 02:00   -> Thursday shift
+
+    if (overnight && currentTime <= end)
+    {
+        shiftDate = shiftDate.AddDays(-1);
+    }
+
+
+    // =========================
+    // WORKING DAY
+    // =========================
+
+    string shiftDay =
+        shiftDate.DayOfWeek.ToString();
+
+    bool isWorkingDay =
+        organizationPolicy.WorkingDays.Any(
+            day => string.Equals(
+                day,
+                shiftDay,
+                StringComparison.OrdinalIgnoreCase
+            )
+        );
+
+    if (!isWorkingDay)
+    {
+        reason =
+            $"outside configured working days ({shiftDay})";
+
+        return false;
+    }
+
+
+    // =========================
+    // HOLIDAY
+    // =========================
+
+    string shiftDateString =
+        shiftDate.ToString("yyyy-MM-dd");
+
+    bool isHoliday =
+        organizationPolicy.Holidays.Any(
+            holiday => string.Equals(
+                NormalizeDate(holiday),
+                shiftDateString,
+                StringComparison.OrdinalIgnoreCase
+            )
+        );
+
+    if (isHoliday)
+    {
+        reason =
+            $"company holiday ({shiftDateString})";
+
+        return false;
+    }
+
 
     return true;
 }
@@ -478,6 +632,11 @@ private static DateTime GetPolicyNow()
     }
 }
 
+private static DateTime GetUtcNow()
+{
+    return DateTime.UtcNow;
+}
+
 private static string NormalizeDate(string value)
 {
     if (DateTime.TryParse(value, out DateTime date))
@@ -499,7 +658,12 @@ private static async Task PauseMonitoring(
         return;
     }
 
-    DateTime now = DateTime.Now;
+    DateTime now = GetPolicyNow();
+
+    Console.WriteLine(
+        $"Pausing monitoring: {reason}"
+    );
+
 
     if (isIdle)
     {
@@ -511,8 +675,9 @@ private static async Task PauseMonitoring(
 
         isIdle = false;
     }
-    else if (monitoringPolicy.AppTrackingEnabled &&
-             (now - lastActivitySave).TotalSeconds > 1)
+    else if (
+        monitoringPolicy.AppTrackingEnabled &&
+        (now - lastActivitySave).TotalSeconds > 1)
     {
         await ApiService.SendActivity(
             lastWindow,
@@ -525,46 +690,172 @@ private static async Task PauseMonitoring(
         );
     }
 
+
     restrictedRunning = false;
     restrictedSite = "";
     emailSent = false;
+
+
     monitoringPaused = true;
     lastPauseReason = reason;
+
+
     lastWindow = currentWindow;
     lastWindowTitle = title;
     lastActivitySave = now;
 
+
+    // End session
+    await ApiService.EndSession(DateTime.Now);
+
+    // User offline
     await ApiService.UpdateStatus("Offline");
 
-    Console.WriteLine($"Monitoring stopped by policy: {lastPauseReason}");
+
+    Console.WriteLine(
+        $"Monitoring stopped by policy: {lastPauseReason}"
+    );
 }
 
 
 
-public static void OnLocked()
+public static async Task HandleLocked()
 {
-    isIdle = false;
-idleAppName = "";
-    restrictedRunning = false;
-    restrictedSite = "";
-    emailSent = false;
+    try
+    {
+        Console.WriteLine(
+            "ActivityService: Handling Windows Lock."
+        );
 
-    Console.WriteLine("ActivityService: Lock state reset.");
+        timer?.Stop();
+
+        isIdle = false;
+        idleAppName = "";
+
+        restrictedRunning = false;
+        restrictedSite = "";
+        emailSent = false;
+
+        // End currently running session
+        await ApiService.EndSession(DateTime.Now);
+
+        // User must immediately become Offline
+        await ApiService.UpdateStatus("Offline");
+
+        Console.WriteLine(
+            "ActivityService: Session ended because Windows was locked."
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine(
+            $"HandleLocked Error: {ex.Message}"
+        );
+    }
 }
 
-public static void OnUnlocked()
+public static async Task HandleUnlocked()
 {
+    try
+    {
+        Console.WriteLine(
+            "ActivityService: Handling Windows Unlock."
+        );
+
+        DateTime now = GetPolicyNow();
+
+        isIdle = false;
+        idleAppName = "";
+
+        restrictedRunning = false;
+        restrictedSite = "";
+        emailSent = false;
+
+        lastWindow =
+            WindowService.GetActiveWindow();
+
+        lastWindowTitle =
+            WindowService.GetActiveWindowTitle();
+
+        lastActivitySave = now;
+
+
+        // Check shift policy again
+        if (!IsMonitoringAllowed(
+            now,
+            out string reason))
+        {
+            monitoringPaused = true;
+            lastPauseReason = reason;
+
+            await ApiService.UpdateStatus("Offline");
+
+            Console.WriteLine(
+                $"Unlock occurred outside working hours: {reason}"
+            );
+
+            // Timer start nahi karna because
+            // policy already says outside hours.
+            return;
+        }
+
+
+        monitoringPaused = false;
+        lastPauseReason = "";
+
+        await StartMonitoringSession(now);
+
+        timer?.Start();
+
+        Console.WriteLine(
+            "ActivityService: Monitoring resumed after unlock."
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine(
+            $"HandleUnlocked Error: {ex.Message}"
+        );
+    }
+}
+
+
+private static async Task StartMonitoringSession(DateTime now)
+{
+    if (UserSessionState.IsLocked)
+    {
+        Console.WriteLine(
+            "Cannot start monitoring session because Windows is locked."
+        );
+
+        return;
+    }
+
+    if (!IsMonitoringAllowed(now, out string reason))
+    {
+        monitoringPaused = true;
+        lastPauseReason = reason;
+
+        await ApiService.UpdateStatus("Offline");
+
+        return;
+    }
+
+    monitoringPaused = false;
+    lastPauseReason = "";
+
     lastWindow = WindowService.GetActiveWindow();
     lastWindowTitle = WindowService.GetActiveWindowTitle();
-    lastActivitySave = DateTime.Now;
+    lastActivitySave = now;
 
-    isIdle = false;
-idleAppName = "";
-    restrictedRunning = false;
-    restrictedSite = "";
-    emailSent = false;
 
-    Console.WriteLine("ActivityService: Unlock state reset.");
+    await ApiService.StartSession(now);
+
+    await ApiService.UpdateStatus("Online");
+
+    Console.WriteLine(
+        $"Monitoring session started at {now}"
+    );
 }
 
 }

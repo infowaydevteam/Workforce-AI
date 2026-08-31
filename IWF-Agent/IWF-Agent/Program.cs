@@ -56,7 +56,7 @@ class Program
             // Start Session
             // ==========================
 
-            await ApiService.StartSession();
+            // await ApiService.StartSession();
 
 
             // ==========================
@@ -88,7 +88,7 @@ class Program
             // Start Monitoring
             // ==========================
 
-            ActivityService.Start();
+            await ActivityService.Start();
 LockService.Start();
             // ==========================
             // Heartbeat

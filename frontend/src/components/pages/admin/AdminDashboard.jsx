@@ -68,108 +68,155 @@ const AdminDashboard = () => {
   }));
 
   const fetchStats = async () => {
-    try {
-      const token = localStorage.getItem("token");
-
-      const res = await fetch(
-        `${API_BASE_URL}/api/dashboard/stats`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await res.json();
-
-      setStats(data);
-      console.log(data)
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  const fetchActivities = async () => {
+  try {
     const token = localStorage.getItem("token");
 
     const res = await fetch(
-      `${API_BASE_URL}/api/dashboard/recent-activities`,
+      `${API_BASE_URL}/api/dashboard/stats`,
       {
+        method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
       }
     );
 
     const data = await res.json();
 
+    if (!res.ok) {
+      console.error("Dashboard API Error:", data);
+      return;
+    }
+
+    console.log("Dashboard Stats:", data);
+    setStats(data);
+
+  } catch (err) {
+    console.error("Fetch Stats Error:", err);
+  }
+};
+const fetchActivities = async () => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(
+      `${API_BASE_URL}/api/dashboard/recent-activities`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("Recent Activities API Error:", data);
+      return;
+    }
+
+    console.log("Recent Activities:", data);
+
     setActivities(data);
-  };
+  } catch (err) {
+    console.error("Fetch Activities Error:", err);
+  }
+};
 
   const fetchLiveUsers = async () => {
-    try {
-      const token = localStorage.getItem("token");
+  try {
+    const token = localStorage.getItem("token");
 
-      const res = await fetch(
-        `${API_BASE_URL}/api/dashboard/live-users`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+    const res = await fetch(
+      `${API_BASE_URL}/api/dashboard/live-users`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-      const data = await res.json();
-      console.log("LIVE USERS =>", data);
+    const data = await res.json();
 
-      setLiveUsers(data);
-    } catch (err) {
-      console.log(err);
+    if (!res.ok) {
+      console.error("LIVE USERS API ERROR:", data);
+      return;
     }
-  };
+
+    console.log("LIVE USERS =>", data);
+
+    setLiveUsers(data);
+  } catch (err) {
+    console.error("FETCH LIVE USERS ERROR:", err);
+  }
+};
 
   const fetchOrganizationSummary = async () => {
-    try {
-      const token = localStorage.getItem("token");
+  try {
+    const token = localStorage.getItem("token");
 
-      const res = await fetch(
-        `${API_BASE_URL}/api/dashboard/organization-summary`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+    const res = await fetch(
+      `${API_BASE_URL}/api/dashboard/organization-summary`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-      const data = await res.json();
-      console.log("new",data)
+    const data = await res.json();
 
-      setOrgSummary(data);
-    } catch (err) {
-      console.log(err);
+    if (!res.ok) {
+      console.error("Organization Summary API Error:", data);
+      return;
     }
-  };
 
-  const fetchTopApps = async () => {
-    try {
-      const token = localStorage.getItem("token");
+    console.log("Organization Summary:", data);
 
-      const res = await fetch(
-        `${API_BASE_URL}/api/dashboard/top-apps`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+    setOrgSummary(data);
 
-      const data = await res.json();
-      console.log("TOP APPS:", data);
-      setTopApps(data);
-    } catch (err) {
-      console.log(err);
+  } catch (err) {
+    console.error("Fetch Organization Summary Error:", err);
+  }
+};
+
+const fetchTopApps = async () => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(
+      `${API_BASE_URL}/api/dashboard/top-apps`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("TOP APPS API ERROR:", data);
+      return;
     }
-  };
+
+    console.log("TOP APPS:", data);
+
+    setTopApps(data);
+
+  } catch (err) {
+    console.error("FETCH TOP APPS ERROR:", err);
+  }
+};
 
 
   useEffect(() => {
