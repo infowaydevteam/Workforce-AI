@@ -1,0 +1,2 @@
+C:\Users\USER\Documents\Work-Test\IWF-Agent\IWF-Agent\bin\Release\net10.0-windows\win-x64\publish\IWF-Agent.pdb
+C:\Users\USER\Documents\Work-Test\IWF-Agent\IWF-Agent\bin\Release\net10.0-windows\win-x64\publish\IWF-Agent.exe

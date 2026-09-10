@@ -1,0 +1,2 @@
+C:\Users\USER\Documents\Work-Test\IWF-Agent\IWF-Agent-Launcher - Copy\bin\Release\net10.0\win-x64\publish\Launcher.pdb
+C:\Users\USER\Documents\Work-Test\IWF-Agent\IWF-Agent-Launcher - Copy\bin\Release\net10.0\win-x64\publish\Launcher.exe

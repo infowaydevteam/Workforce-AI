@@ -1,0 +1,40 @@
+{
+  "version": 2,
+  "dgSpecHash": "eKYwirPEAGQ=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\USER\\Documents\\IWF-lockin\\New folder\\IWF-Agent\\IWF-Agent\\IWF-Agent.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\USER\\.nuget\\packages\\microsoft.net.illink.tasks\\10.0.11\\microsoft.net.illink.tasks.10.0.11.nupkg.sha512",
+    "C:\\Users\\USER\\.nuget\\packages\\microsoft.win32.systemevents\\10.0.11\\microsoft.win32.systemevents.10.0.11.nupkg.sha512",
+    "C:\\Users\\USER\\.nuget\\packages\\system.net.http.json\\10.0.8\\system.net.http.json.10.0.8.nupkg.sha512",
+    "C:\\Users\\USER\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\10.0.11\\microsoft.netcore.app.runtime.win-x64.10.0.11.nupkg.sha512",
+    "C:\\Users\\USER\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\10.0.11\\microsoft.windowsdesktop.app.runtime.win-x64.10.0.11.nupkg.sha512",
+    "C:\\Users\\USER\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\10.0.11\\microsoft.aspnetcore.app.runtime.win-x64.10.0.11.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1510",
+      "level": "Warning",
+      "message": "PackageReference Microsoft.Win32.SystemEvents will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.",
+      "projectPath": "C:\\Users\\USER\\Documents\\IWF-lockin\\New folder\\IWF-Agent\\IWF-Agent\\IWF-Agent.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\Users\\USER\\Documents\\IWF-lockin\\New folder\\IWF-Agent\\IWF-Agent\\IWF-Agent.csproj",
+      "libraryId": "Microsoft.Win32.SystemEvents",
+      "targetGraphs": [
+        "net10.0-windows7.0"
+      ]
+    },
+    {
+      "code": "NU1510",
+      "level": "Warning",
+      "message": "PackageReference System.Net.Http.Json will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.",
+      "projectPath": "C:\\Users\\USER\\Documents\\IWF-lockin\\New folder\\IWF-Agent\\IWF-Agent\\IWF-Agent.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\Users\\USER\\Documents\\IWF-lockin\\New folder\\IWF-Agent\\IWF-Agent\\IWF-Agent.csproj",
+      "libraryId": "System.Net.Http.Json",
+      "targetGraphs": [
+        "net10.0-windows7.0"
+      ]
+    }
+  ]
+}
