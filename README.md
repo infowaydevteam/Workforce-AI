@@ -10,13 +10,16 @@ npm install
 npm start
 ```
 
-For screenshot capture, apply the screenshot migration and configure encrypted storage:
+Apply the migrations in `backend/migrations` in numerical order:
 
 ```bash
-psql "$DATABASE_URL" -f migrations/002_employee_screenshots.sql
+for f in migrations/*.sql; do psql "$DATABASE_URL" -f "$f"; done
 ```
 
-See `backend/.env.example` for the required `SCREENSHOT_*` settings.
+They cover the admin workflow tables, encrypted screenshot storage, the idle
+alert tables, and a conversion of the screenshot timestamps to `timestamptz`.
+Screenshot capture also needs the `SCREENSHOT_*` settings described in
+`backend/.env.example`.
 
 ### 2. Start Frontend
 
@@ -38,23 +41,28 @@ Login using admin credentials.
 
 ## Roles and Permissions
 
-IWF currently uses the following user roles:
+IWF uses three user roles. The values in the table are what is stored in
+`users.role`; the names beside them are what the interface shows.
 
-| Role | Purpose |
-|---|---|
-| `superadmin` | Platform-level administrator. Can manage organizations, teams, employees, policies, reports, and screenshots across all organizations. |
-| `admin` | Organization-level administrator. Can manage employees, teams, policies, reports, and screenshots within their organization. |
-| `hr` | HR/reporting role. Can access Reports and view employee screenshots within their organization. |
-| `employee` | Regular monitored employee. Uses the desktop agent for status, activity, idle time, and screenshot uploads. |
-| `manager` | Team manager role. Receives restricted website/app usage alerts for employees in their team. |
-| `executive` | Reserved business role. Currently available for assignment and display, but does not have dedicated dashboard or report permissions yet. |
+| Stored value | Shown as | Purpose |
+|---|---|---|
+| `superadmin` | Super Admin | Platform-level administrator. Manages organizations, teams, employees, policies, reports and screenshots across every organization. |
+| `admin` | Team Admin | Organization-level administrator. Manages employees, teams, policies, reports and screenshots within their own organization, and receives restricted website and app alerts for employees in their team. |
+| `employee` | Employee | Monitored employee. Runs the desktop agent, which reports status, activity, idle time and screenshots. |
 
-Notes:
+Who can assign what:
 
-* `superadmin`, `admin`, and `hr` can access screenshot reports according to their scope.
-* `employee`, `manager`, and `executive` are treated as monitored users for agent-based tracking.
-* `manager` is used by restricted alert emails when an employee accesses a restricted website or app.
-* Role values are currently stored as strings in `users.role`.
+* A Super Admin can assign any of the three roles, including promoting another
+  account to Super Admin.
+* Everyone else can only create and assign Employees. The server rejects a Team
+  Admin who tries to assign a higher role, even by calling the API directly.
+* The last Super Admin cannot be demoted, so there is always one account able to
+  restore the others.
+* Super Admins are listed in Users only for other Super Admins.
+
+Earlier builds also had `hr`, `manager` and `executive`. No account ever held
+them and they have been removed; what `manager` was meant to do is now the Team
+Admin's job.
 
 ### 4. Create Organization
 
@@ -124,14 +132,37 @@ No further action is required.
 
 ### 4. Automatic Updates
 
-After the first installation, employees do not need to uninstall and reinstall for future agent releases.
+After the first installation, employees do not need to uninstall and reinstall
+for future agent releases.
 
-When a new agent version is released:
+When a new agent version is published:
 
-* Backend update manifest is updated with the latest version
-* Agent checks the manifest automatically
-* Agent downloads the correct Windows or macOS package
-* Agent verifies the package checksum
-* Agent stages and applies the update, then restarts when safe
+* The agent asks `/api/agent/updates` for the current manifest, at startup and
+  every six hours after that.
+* If a newer version is listed, it downloads the package and checks its SHA-256
+  against the manifest. A package that does not match is discarded.
+* It stages the package, applies it, and exits so the LaunchAgent (macOS) or the
+  relaunch script (Windows) starts the new build.
+* If the update is applied while the employee is being monitored, the agent ends
+  the session and marks them Offline first, so nobody is left showing Online.
 
----
+If applying an update fails, the agent restarts the version it already has
+rather than leaving the machine unmonitored, and records what happened:
+
+* macOS writes `~/Library/Application Support/IWF-Agent/updates/<version>/`.
+* Windows writes `apply-update.log` in
+  `%LOCALAPPDATA%\IWF-Agent\updates\<version>\`, saying whether the copy
+  succeeded or whether it had to restart the old build.
+
+Windows retries the copy up to five times, since the running executable has to
+be released before it can be overwritten. After three failed attempts at the
+same version it stops trying, to avoid re-downloading the package on every
+restart. Publishing a newer version starts a fresh set of attempts; to make it
+retry the same version, delete `update-state.json` in
+`%LOCALAPPDATA%\IWF-Agent\updates\`.
+
+The macOS update path has been exercised end to end, from an agent on an older
+version through to the new build running. The Windows path is verified as far as
+the download and checksum; applying it has not been run on a Windows machine.
+
+See `backend/agent-updates/README.md` for how to publish a release.

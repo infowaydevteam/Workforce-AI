@@ -8,7 +8,10 @@ These features are fully implemented and available in the current codebase.
 
 ### Authentication
 - **User Login** — JWT-based authentication with bcrypt password hashing
-- **Role-based Access Control** — Admin and Employee roles with protected routes
+- **Role-based Access Control** — Three roles with protected routes: Super Admin
+  (`superadmin`), Team Admin (`admin`) and Employee (`employee`). Only a Super
+  Admin can assign a role other than Employee, and the last Super Admin cannot be
+  demoted. See README for the full permission table.
 - **Token Expiry** — JWT tokens expire after 24 hours
 
 ---
@@ -53,7 +56,36 @@ These features are fully implemented and available in the current codebase.
 - **Activity Logging** — Desktop agent posts activity events (app usage, window focus) to the backend
 - **Idle Logging** — Desktop agent detects and logs idle periods
 - **Agent Token Verification** — Each desktop agent authenticates using a unique per-user token
-- **Agent Download** — Admin can download a pre-configured desktop agent (IWF-Agent.zip) per employee
+- **Agent Download** — Admin can download a pre-configured desktop agent per employee
+- **Agent Auto-Update** — Agents poll an update manifest, verify the package
+  checksum and apply the new build themselves. A failed update restarts the
+  existing build and records why, rather than leaving the machine unmonitored.
+  *(macOS verified end to end; the Windows apply step has not been run on
+  Windows)*
+
+---
+
+### Idle Alerts
+- **Working-time Aware** — Idle is only alertable inside the organization's
+  working days and hours, in its own timezone, and never on a configured holiday
+- **Episode Tracking** — Each continuous idle period is one episode, so a single
+  stretch of inactivity produces a single email
+- **Delivery Claim** — An episode is claimed before the email is sent, so a crash
+  mid-send cannot produce a duplicate
+- **Failure Recorded** — SMTP errors are stored against the episode instead of
+  being swallowed
+
+---
+
+### Screenshots
+- **Agent Capture** — Windows agent captures the primary screen on the interval
+  set by policy *(macOS agent has no capture yet)*
+- **Encrypted at Rest** — Stored AES-256-GCM encrypted, outside the database,
+  with the key derived from `SCREENSHOT_ENCRYPTION_KEY`
+- **Scoped Access** — Super Admins see every organization, Team Admins only
+  their own
+- **Audit Log** — Every search and view is recorded
+- **Retention** — Screenshots expire after a configurable number of days
 
 ---
 
@@ -107,9 +139,8 @@ Executive Analytics
 - *(Partial — team creation exists; department linkage and policies are upcoming)*
 
 ### 6. Managers Assigned
-- Assign manager roles to specific employees
-- Managers get access to their team's data only
-- Manager dashboard with team-level analytics
+- *(Superseded — the manager role was removed; a Team Admin now owns their
+  organization's employees and receives their restricted-usage alerts)*
 
 ### 7. Employees Invited
 - Admin sends email invitations to employees
