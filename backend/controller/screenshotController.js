@@ -7,6 +7,19 @@ const {
 const MAX_SCREENSHOT_BYTES = Number(process.env.SCREENSHOT_MAX_BYTES || 5 * 1024 * 1024);
 const RETENTION_DAYS = Number(process.env.SCREENSHOT_RETENTION_DAYS || 30);
 
+// The date filters are interpreted in the caller's zone. Validate here rather
+// than letting an unknown name reach Postgres, where it would abort the query.
+const resolveTimeZone = (value) => {
+  if (typeof value !== "string" || value.length === 0) return "UTC";
+
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return value;
+  } catch {
+    return "UTC";
+  }
+};
+
 const getImageInfo = (buffer) => {
   if (
     buffer.length > 10 &&
@@ -233,14 +246,30 @@ const listScreenshots = async (req, res) => {
       filters.push(`s.employee_id = $${params.length}`);
     }
 
+    // `from`/`to` are calendar dates as the viewer sees them, so the stored
+    // instant has to be read back in the viewer's zone before its date is taken.
+    // Comparing against DATE(s.captured_at) alone silently uses the database
+    // server's zone, which puts a capture on the wrong calendar day for every
+    // viewer who is not in that zone.
+    let timeZoneParam = null;
+
+    if (from || to) {
+      params.push(resolveTimeZone(req.query.tz));
+      timeZoneParam = params.length;
+    }
+
     if (from) {
       params.push(from);
-      filters.push(`DATE(s.captured_at) >= $${params.length}`);
+      filters.push(
+        `DATE(s.captured_at AT TIME ZONE $${timeZoneParam}) >= $${params.length}`
+      );
     }
 
     if (to) {
       params.push(to);
-      filters.push(`DATE(s.captured_at) <= $${params.length}`);
+      filters.push(
+        `DATE(s.captured_at AT TIME ZONE $${timeZoneParam}) <= $${params.length}`
+      );
     }
 
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";

@@ -2,7 +2,13 @@ import React, { useEffect, useState } from "react";
 import { API_BASE_URL } from "../../../../config";
 import { Eye, Search } from "lucide-react";
 
-const today = new Date().toISOString().slice(0, 10);
+// The date pickers mean calendar days as this viewer sees them, so both the
+// default and the filter have to be in the viewer's zone. toISOString() would
+// give the UTC day, which is a day off for part of every day.
+const VIEWER_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+// en-CA formats as YYYY-MM-DD, which is what <input type="date"> expects.
+const today = new Date().toLocaleDateString("en-CA");
 
 const ScreenshotReports = () => {
   const token = localStorage.getItem("token");
@@ -62,6 +68,7 @@ const ScreenshotReports = () => {
       if (employeeId) params.set("employee_id", employeeId);
       if (fromDate) params.set("from", fromDate);
       if (toDate) params.set("to", toDate);
+      if (fromDate || toDate) params.set("tz", VIEWER_TIME_ZONE);
 
       const res = await fetch(`${API_BASE_URL}/api/screenshots?${params}`, {
         headers: authHeaders,
