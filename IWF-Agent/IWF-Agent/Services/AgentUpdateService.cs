@@ -26,7 +26,7 @@ public static class AgentUpdateService
         // Check immediately
         if (await CheckForUpdates())
         {
-            Environment.Exit(0);
+            await ExitForUpdate();
             return;
         }
 
@@ -36,12 +36,30 @@ public static class AgentUpdateService
 
             if (await CheckForUpdates())
             {
-                Environment.Exit(0);
+                await ExitForUpdate();
                 return;
             }
         }
     });
 }
+
+    // These checks run once monitoring is already under way, so the process is
+    // leaving an open session behind. Environment.Exit on its own skipped the
+    // normal teardown and left the employee showing Online until the offline
+    // checker reaped them; mirror Program's finally block instead.
+    private static async Task ExitForUpdate()
+    {
+        try
+        {
+            await ActivityService.Stop();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Shutdown before update warning: {ex.Message}");
+        }
+
+        Environment.Exit(0);
+    }
 
     public static async Task<bool> CheckForUpdates()
     {
@@ -193,20 +211,58 @@ public static class AgentUpdateService
         var installDir = AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
         var exePath = Process.GetCurrentProcess().MainModule?.FileName ??
             Path.Combine(installDir, "IWF-Agent.exe");
-        var scriptPath = Path.Combine(
-            Path.GetDirectoryName(stagingPath) ?? stagingPath,
-            "apply-update.ps1"
-        );
+        var updateRoot = Path.GetDirectoryName(stagingPath) ?? stagingPath;
+        var scriptPath = Path.Combine(updateRoot, "apply-update.ps1");
+        var logPath = Path.Combine(updateRoot, "apply-update.log");
 
+        // Windows will not let the copy overwrite IWF-Agent.exe until the exiting
+        // process has released it. The original script slept two seconds, ignored
+        // any copy error because Copy-Item fails non-terminating by default, and
+        // then restarted the agent regardless - so a locked executable silently
+        // relaunched the old build while the log claimed the update had been
+        // applied. Retry the copy, and write the outcome somewhere it can be read
+        // afterwards, since this script runs with no console attached.
         var script = $@"
-Start-Sleep -Seconds 2
+$ErrorActionPreference = 'Stop'
+$log = '{EscapePowerShell(logPath)}'
 $source = '{EscapePowerShell(stagingPath)}'
 $destination = '{EscapePowerShell(installDir)}'
 $exe = '{EscapePowerShell(exePath)}'
-Get-ChildItem -Path $source | Where-Object {{ $_.Name -ne 'config.json' }} | ForEach-Object {{
-  Copy-Item -Path $_.FullName -Destination $destination -Recurse -Force
+
+function Write-UpdateLog($message) {{
+  try {{
+    ""$((Get-Date).ToString('o')) $message"" | Add-Content -Path $log -Encoding UTF8
+  }} catch {{ }}
 }}
-Start-Process -FilePath $exe -WindowStyle Hidden
+
+$applied = $false
+
+for ($attempt = 1; $attempt -le 5; $attempt++) {{
+  Start-Sleep -Seconds 2
+
+  try {{
+    Get-ChildItem -Path $source | Where-Object {{ $_.Name -ne 'config.json' }} | ForEach-Object {{
+      Copy-Item -Path $_.FullName -Destination $destination -Recurse -Force
+    }}
+
+    $applied = $true
+    Write-UpdateLog ""Applied update into $destination on attempt $attempt.""
+    break
+  }} catch {{
+    Write-UpdateLog ""Attempt $attempt failed: $($_.Exception.Message)""
+  }}
+}}
+
+if (-not $applied) {{
+  Write-UpdateLog 'Update was NOT applied. Restarting the existing build instead.'
+}}
+
+try {{
+  Start-Process -FilePath $exe -WindowStyle Hidden
+  Write-UpdateLog ""Restarted $exe (updated=$applied).""
+}} catch {{
+  Write-UpdateLog ""Failed to restart $($exe): $($_.Exception.Message)""
+}}
 ";
 
         File.WriteAllText(scriptPath, script);
@@ -220,6 +276,7 @@ Start-Process -FilePath $exe -WindowStyle Hidden
         });
 
         Console.WriteLine("Launched Windows ZIP updater. Current agent will exit.");
+        Console.WriteLine($"Updater outcome will be written to {logPath}");
         return true;
     }
 
