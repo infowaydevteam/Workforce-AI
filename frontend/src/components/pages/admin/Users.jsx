@@ -12,6 +12,12 @@ const Users = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const navigate = useNavigate();
 
+  // Signed-in user, read the same way as ProtectedRoute and Sidebar.
+  // Both this and `role` were referenced below but never defined, so opening
+  // the Add User modal threw "role is not defined" and blanked the page.
+  const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+  const role = currentUser?.role;
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -230,15 +236,15 @@ const Users = () => {
     if (showModal && role === "admin") {
       handleOrgChange({
         target: {
-          value: user.organization_id,
+          value: currentUser.organization_id,
         },
       });
 
       setFormData((prev) => ({
         ...prev,
         role: "employee",
-        organization_id: user.organization_id,
-        team_id: user.team_id,
+        organization_id: currentUser.organization_id,
+        team_id: currentUser.team_id,
       }));
     }
   }, [showModal]);
@@ -252,8 +258,8 @@ const Users = () => {
 
     if (role !== "superadmin") {
       payload.role = "employee";
-      payload.organization_id = user.organization_id;
-      payload.team_id = user.team_id;
+      payload.organization_id = currentUser.organization_id;
+      payload.team_id = currentUser.team_id;
     }
 
     try {
