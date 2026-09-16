@@ -13,6 +13,17 @@ import { API_BASE_URL } from "../../../../config";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
+// The API, the database columns and the agents all speak seconds. Only this
+// form speaks minutes, so convert at the input boundary and keep everything
+// that leaves this component in seconds.
+const SECONDS_PER_MINUTE = 60;
+
+const secondsToMinutes = (seconds) =>
+  Math.round(((Number(seconds) || 0) / SECONDS_PER_MINUTE) * 100) / 100;
+
+const minutesToSeconds = (minutes) =>
+  Math.round((Number(minutes) || 0) * SECONDS_PER_MINUTE);
+
 const defaultSetup = {
   organization: {
     subscription_plan_id: "",
@@ -465,32 +476,46 @@ const AdminPolicies = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="block">
                 <span className="block text-sm font-medium text-slate-700 mb-1">
-                  Screenshot Interval (seconds)
+                  Screenshot Interval (minutes)
                 </span>
                 <input
                   type="number"
-                  value={setup.monitoring_policy.screenshot_interval_seconds ?? 0}
-                  onChange={(e) => updateMonitoringField("screenshot_interval_seconds", Number(e.target.value))}
+                  min="0"
+                  step="any"
+                  value={secondsToMinutes(setup.monitoring_policy.screenshot_interval_seconds ?? 0)}
+                  onChange={(e) =>
+                    updateMonitoringField(
+                      "screenshot_interval_seconds",
+                      minutesToSeconds(e.target.value)
+                    )
+                  }
                   className="w-full border border-slate-300 px-4 py-3 rounded-xl"
-                  placeholder="Screenshot interval seconds"
+                  placeholder="Screenshot interval minutes"
                 />
                 <span className="block text-xs text-slate-500 mt-1">
-                  0 means screenshots are disabled.
+                  0 means screenshots are disabled. Fractions are allowed (0.5 = 30 seconds).
                 </span>
               </label>
               <label className="block">
                 <span className="block text-sm font-medium text-slate-700 mb-1">
-                  Idle Threshold (seconds)
+                  Idle Threshold (minutes)
                 </span>
                 <input
                   type="number"
-                  value={setup.monitoring_policy.idle_threshold_seconds ?? 300}
-                  onChange={(e) => updateMonitoringField("idle_threshold_seconds", Number(e.target.value))}
+                  min="0"
+                  step="any"
+                  value={secondsToMinutes(setup.monitoring_policy.idle_threshold_seconds ?? 300)}
+                  onChange={(e) =>
+                    updateMonitoringField(
+                      "idle_threshold_seconds",
+                      minutesToSeconds(e.target.value)
+                    )
+                  }
                   className="w-full border border-slate-300 px-4 py-3 rounded-xl"
-                  placeholder="Idle threshold seconds"
+                  placeholder="Idle threshold minutes"
                 />
                 <span className="block text-xs text-slate-500 mt-1">
-                  Employee is marked idle after this many inactive seconds during monitored time.
+                  Employee is marked idle after this many inactive minutes during monitored time.
                 </span>
               </label>
               {[
