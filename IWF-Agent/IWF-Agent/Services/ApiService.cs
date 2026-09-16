@@ -368,35 +368,37 @@ public static async Task SendHeartbeat()
 {
     try
     {
-        var token = ConfigService.GetToken();
+        var data = new
+        {
+            agent_token = ConfigService.GetToken()
+        };
 
-        var response =
-            await client.GetAsync(
-                $"{ConfigService.GetApiBaseUrl()}/api/agent/config?agent_token={Uri.EscapeDataString(token)}"
-            );
+        var json = JsonSerializer.Serialize(data);
 
+        var content = new StringContent(
+            json,
+            Encoding.UTF8,
+            "application/json"
+        );
+
+        var response = await client.PostAsync(
+            $"{ConfigService.GetApiBaseUrl()}/api/heartbeat",
+            content
+        );
+
+        // This runs every 10 seconds, so only failures are logged.
         if (!response.IsSuccessStatusCode)
         {
-            Console.WriteLine("Failed to fetch agent policy config.");
-            return null;
+            Console.WriteLine(
+                $"Heartbeat Status : {response.StatusCode}"
+            );
         }
-
-        var json =
-            await response.Content.ReadAsStringAsync();
-
-        Console.WriteLine($"Agent Policy Response: {json}");
-
-        return JsonSerializer.Deserialize<AgentPolicyConfig>(
-            json
-        );
     }
     catch (Exception ex)
     {
         Console.WriteLine(
-            $"Agent Policy Error: {ex.Message}"
+            $"Heartbeat Error : {ex.Message}"
         );
-
-        return null;
     }
 }
 
@@ -423,9 +425,12 @@ public static async Task SendScreenshot(
             "application/json"
         );
 
-        var response = await client.PostAsync(url, content);
+        var response = await client.PostAsync(
+            $"{ConfigService.GetApiBaseUrl()}/api/screenshots/upload",
+            content
+        );
 
-        Console.WriteLine($"Heartbeat Status : {response.StatusCode}");
+        Console.WriteLine($"Screenshot Status : {response.StatusCode}");
 
         var body = await response.Content.ReadAsStringAsync();
 
@@ -433,7 +438,7 @@ public static async Task SendScreenshot(
     }
     catch(Exception ex)
     {
-        Console.WriteLine($"Heartbeat Error : {ex}");
+        Console.WriteLine($"Screenshot Error : {ex.Message}");
     }
 }
 

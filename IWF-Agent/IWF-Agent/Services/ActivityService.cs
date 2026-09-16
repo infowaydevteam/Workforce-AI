@@ -120,11 +120,8 @@ static bool emailSent = false;
                 "Windows is locked. Skipping activity tracking."
             );
 
-            if (!IsMonitoringAllowed(GetPolicyNow(), out string pauseReason))
-            {
-                await PauseMonitoring(currentWindow, title, pauseReason);
-                return;
-            }
+            return;
+        }
 
         string currentWindow =
             WindowService.GetActiveWindow();
