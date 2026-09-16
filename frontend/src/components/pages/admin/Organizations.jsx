@@ -96,26 +96,6 @@ const fetchPlans = async () => {
   }
 };
 
-const fetchPlans = async () => {
-  try {
-    const token = localStorage.getItem("token");
-
-    const res = await fetch(
-      `${API_BASE_URL}/api/admin-workflow/subscription-plans`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    const data = await res.json();
-    setPlans(data);
-  } catch (err) {
-    console.log(err);
-  }
-};
-
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchOrgs();

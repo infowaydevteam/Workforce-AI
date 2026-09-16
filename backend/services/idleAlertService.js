@@ -130,8 +130,12 @@ async function recordStatusTransition(userId, status) {
   try {
     await client.query("BEGIN");
     const updated = await client.query(
+      // Never RETURNING *: /api/employee/status is unauthenticated, so the row
+      // is echoed straight back to the caller. Keep secrets (password hash,
+      // agent_token) out of the response.
       `UPDATE users SET status = $1, last_active = clock_timestamp()
-       WHERE id = $2 RETURNING *`,
+       WHERE id = $2
+       RETURNING id, name, status, last_active`,
       [status, userId]
     );
     if (updated.rows.length === 0) {
