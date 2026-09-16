@@ -10,19 +10,34 @@ const version = process.argv[2] || "1.0.0";
 const configuration = process.argv[3] || "Release";
 
 const projectPath = path.join(rootDir, "IWF-Agent", "IWF-Agent", "IWF-Agent.csproj");
+
+// Read the target framework instead of hard-coding it: the project targets
+// net10.0-windows, so a hard-coded "net10.0" points at a directory that publish
+// never creates, and the build fails after the slow publish step has run.
+const projectFile = await fsp.readFile(projectPath, "utf8");
+const targetFramework = projectFile.match(
+  /<TargetFramework>([^<]+)<\/TargetFramework>/
+)?.[1];
+
+if (!targetFramework) {
+  throw new Error(`Could not read TargetFramework from ${projectPath}`);
+}
+
 const publishDir = path.join(
   rootDir,
   "IWF-Agent",
   "IWF-Agent",
   "bin",
   configuration,
-  "net10.0",
+  targetFramework,
   "win-x64",
   "publish"
 );
 const packageRoot = path.join(rootDir, "backend", "agent-updates", "windows", version);
 const packagePath = path.join(packageRoot, `IWF-Agent-Setup-${version}.zip`);
 
+// EnableWindowsTargeting lets the win-x64 publish run from macOS or Linux as
+// well; on Windows the property is simply redundant.
 await execFileAsync("dotnet", [
   "publish",
   projectPath,
@@ -32,6 +47,7 @@ await execFileAsync("dotnet", [
   "win-x64",
   "--self-contained",
   "true",
+  "-p:EnableWindowsTargeting=true",
 ]);
 
 await fsp.mkdir(packageRoot, { recursive: true });

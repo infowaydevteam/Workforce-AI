@@ -3,22 +3,27 @@
   "platforms": {
     "windows": {
       "enabled": true,
-      "latest_version": "1.0.0",
+      "latest_version": "1.0.8",
       "mandatory": false,
-      "package_name": "IWF-Agent-Setup-1.0.0.zip",
-      "checksum_sha256": "6ff1ffc6ccff725e78556471df051078e15fd334fc8a895de3bb745bb8f1c20a",
+      "package_name": "IWF-Agent-Setup-1.0.8.zip",
+      "checksum_sha256": "2e86da177eaffae216ff9d01c43ca5fe692db1e9991d0c9c5d4c4794dfb1de70",
       "release_notes": [
-        "Windows agent 1.0.0"
+        "Status updates now authenticate with the agent token instead of a guessable user id.",
+        "Heartbeat is sent again: the previous build called the policy endpoint by mistake and never reached /api/heartbeat.",
+        "Screenshot upload is sent again: the previous build had no destination URL and always failed.",
+        "Activity tracking runs while the workstation is unlocked; it was previously confined to the locked branch.",
+        "First build produced from a source tree that compiles; 1.0.4 was advertised but never built."
       ]
     },
     "macos": {
       "enabled": true,
-      "latest_version": "1.0.0",
+      "latest_version": "1.0.2",
       "mandatory": false,
-      "package_name": "IWF-Agent-1.0.0.pkg",
-      "checksum_sha256": "679b2304509d37a77be2d2fa2de338a279f90cebc2430ddc5b305522e2228e53",
+      "package_name": "IWF-Agent-1.0.2.pkg",
+      "checksum_sha256": "eb200af24f611cbbe4e8f67dd631d74f3a5913f4f2fac2cb2768623c4c74cdd1",
       "release_notes": [
-        "macOS agent 1.0.0"
+        "Status updates now authenticate with the agent token instead of a guessable user id.",
+        "Reports its version as 1.0.2 so the update channel can tell builds apart."
       ]
     }
   }

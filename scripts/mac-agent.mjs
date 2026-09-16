@@ -25,7 +25,7 @@ const TICK_MS = 5000;
 const ACTIVE_CHUNK_SECONDS = 30;
 const POLICY_REFRESH_MS = 30000;
 const UPDATE_CHECK_MS = 6 * 60 * 60 * 1000;
-const CURRENT_VERSION = "1.0.0";
+const CURRENT_VERSION = "1.0.2";
 const PLATFORM = "macos";
 
 const state = {

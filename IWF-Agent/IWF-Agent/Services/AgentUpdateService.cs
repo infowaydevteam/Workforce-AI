@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 public static class AgentUpdateService
 {
-    public const string CurrentVersion = "1.0.4";
+    public const string CurrentVersion = "1.0.8";
     private const string Platform = "windows";
     private static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(6);
     private static readonly HttpClient client = new HttpClient();
