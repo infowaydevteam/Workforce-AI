@@ -17,11 +17,12 @@ public static class AgentUpdateService
 
     // An update that cannot be applied restarts the old build, which checks for
     // updates again the moment it comes back. Without a ceiling that is a loop
-    // that re-downloads the whole package every few seconds, forever. Stop after
-    // a few failures and wait out a cooldown, so a transient cause still
-    // recovers on its own but a permanent one costs one attempt per cooldown.
+    // that re-downloads the whole package every few seconds, forever. Three
+    // attempts per version, then stop for good: whatever blocks the copy is not
+    // going to clear itself, and an agent quietly burning bandwidth is worse
+    // than one sitting on an old build with the reason written down. Publishing
+    // a new version starts a fresh budget.
     private const int MaxApplyAttempts = 3;
-    private static readonly TimeSpan ApplyRetryCooldown = TimeSpan.FromHours(6);
 
     private class UpdateAttemptState
     {
@@ -78,8 +79,9 @@ public static class AgentUpdateService
         }
     }
 
-    // Returns false when this version has already burned its attempts and the
-    // cooldown has not elapsed.
+    // Returns false once this version has used up its attempts. That decision is
+    // final for the version: only a newer release, or deleting update-state.json
+    // by hand, will make the agent try again.
     private static bool ClaimApplyAttempt(string version)
     {
         var state = LoadAttemptState();
@@ -90,20 +92,12 @@ public static class AgentUpdateService
         }
         else if (state.attempts >= MaxApplyAttempts)
         {
-            var waited = DateTime.UtcNow - state.last_attempt_utc;
-
-            if (waited < ApplyRetryCooldown)
-            {
-                Console.WriteLine(
-                    $"Skipping update {version}: {state.attempts} attempts have already failed. " +
-                    $"Next attempt in {(ApplyRetryCooldown - waited).TotalMinutes:F0} minutes. " +
-                    $"See apply-update.log under {Path.Combine(UpdatesRoot, version)}."
-                );
-                return false;
-            }
-
-            Console.WriteLine($"Retrying update {version} after cooldown.");
-            state.attempts = 0;
+            Console.WriteLine(
+                $"Giving up on update {version}: {state.attempts} attempts failed and no further " +
+                $"attempts will be made for this version. See apply-update.log under " +
+                $"{Path.Combine(UpdatesRoot, version)}, and {AttemptStatePath} to reset."
+            );
+            return false;
         }
 
         state.attempts++;
