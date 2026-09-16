@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { API_BASE_URL } from "../../../../config";
 import { Download } from "lucide-react";
 import ScreenshotReports from "./ScreenshotReports";
+import { formatDuration } from "../../../utils/formatDuration";
 
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -22,17 +23,6 @@ import {
 
 const COLORS = ["#4f46e5", "#22c55e", "#ef4444"];
 
-const formatDuration = (sec) => {
-  sec = Number(sec || 0);
-
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
-
-  if (h) return `${h}h ${m}m ${s}s`;
-  if (m) return `${m}m ${s}s`;
-  return `${s}s`;
-};
 
 const Card = ({ title, value }) => (
   <div className="bg-white p-5 rounded-2xl shadow-sm border hover:shadow-md transition">
@@ -607,7 +597,7 @@ const Reports = () => {
                   dataKey="value"
                   nameKey="name"
                   outerRadius={110}
-                  label
+                  label={({ value }) => formatDuration(value)}
                 >
 
                   {pieData.map((entry, index) => (

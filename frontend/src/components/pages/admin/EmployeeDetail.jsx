@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { API_BASE_URL } from "../../../../config";
 import { Copy, ExternalLink } from "lucide-react";
+import { formatDuration } from "../../../utils/formatDuration";
 import {
   ResponsiveContainer,
   LineChart,
@@ -20,18 +21,6 @@ import {
 
 const COLORS = ["#4f46e5", "#facc15", "#22c55e"];
 
-// ---------------- TIME FORMATTER ----------------
-const formatDuration = (seconds) => {
-  const sec = Math.max(0, Number(seconds || 0));
-
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
-
-  if (h > 0) return `${h}h ${m}m ${s}s`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
-};
 
 // ---------------- DATE FORMAT ----------------
 const formatTime = (date) => {
@@ -338,7 +327,7 @@ const EmployeeDetail = () => {
               <BarChart data={appChart}>
                 <CartesianGrid />
                 <XAxis dataKey="name" tickFormatter={(value) => shortenAppName(value)}/>
-                <YAxis />
+                <YAxis tickFormatter={(value) => `${Math.floor(value / 60)}m`} />
                 <Tooltip formatter={(v) => formatDuration(v)} />
                 <Bar dataKey="usage" fill="#6366f1" />
               </BarChart>
@@ -352,7 +341,12 @@ const EmployeeDetail = () => {
 
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
-              <Pie data={pieData} dataKey="value" outerRadius={120} label>
+              <Pie
+                data={pieData}
+                dataKey="value"
+                outerRadius={120}
+                label={({ value }) => formatDuration(value)}
+              >
                 {pieData.map((_, i) => (
                   <Cell key={i} fill={COLORS[i]} />
                 ))}

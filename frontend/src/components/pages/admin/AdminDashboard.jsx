@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Users, Building2, Layers } from "lucide-react";
 import { API_BASE_URL } from "../../../../config";
 import Pagination from "../../Pagination";
+import { formatDuration } from "../../../utils/formatDuration";
 import {
   PieChart,
   Pie,
@@ -515,8 +516,8 @@ const fetchTopApps = async () => {
                 <BarChart data={appChartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
+                  <YAxis tickFormatter={(value) => `${Math.floor(value / 60)}m`} />
+                  <Tooltip formatter={(value) => formatDuration(value)} />
 
                   <Bar dataKey="usage" fill="#6366f1" radius={[6, 6, 0, 0]} />
                 </BarChart>
