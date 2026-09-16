@@ -125,24 +125,35 @@ async function syncIdleEpisodeForUser(userId, closeReason) {
   }
 }
 
-async function recordStatusTransition(userId, status) {
+// `selector` is either { agentToken } or { userId }. agent_token is the agent's
+// actual credential (an unguessable UUID, the same one heartbeat authenticates
+// with); userId is the legacy, unauthenticated path kept for agents already in
+// the field. See updateStatus for the deprecation plan.
+async function recordStatusTransition(selector, status) {
+  const agentToken = selector?.agentToken;
+  const byAgentToken = typeof agentToken === "string" && agentToken.length > 0;
+  const identifier = byAgentToken ? agentToken : selector?.userId;
+
+  if (identifier === undefined || identifier === null || identifier === "") {
+    return null;
+  }
+
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     const updated = await client.query(
-      // Never RETURNING *: /api/employee/status is unauthenticated, so the row
-      // is echoed straight back to the caller. Keep secrets (password hash,
-      // agent_token) out of the response.
+      // Never RETURNING *: the row is echoed straight back to the caller, so
+      // keep secrets (password hash, agent_token) out of the response.
       `UPDATE users SET status = $1, last_active = clock_timestamp()
-       WHERE id = $2
+       WHERE ${byAgentToken ? "agent_token" : "id"} = $2
        RETURNING id, name, status, last_active`,
-      [status, userId]
+      [status, identifier]
     );
     if (updated.rows.length === 0) {
       await client.query("ROLLBACK");
       return null;
     }
-    await syncIdleEpisode(client, userId, status === "Online" ? "online" : "offline");
+    await syncIdleEpisode(client, updated.rows[0].id, status === "Online" ? "online" : "offline");
     await client.query("COMMIT");
     return updated.rows[0];
   } catch (error) {

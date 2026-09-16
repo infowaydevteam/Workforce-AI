@@ -277,11 +277,32 @@ const updateUserAssignment = async (req, res) => {
 
 const updateStatus = async (req, res) => {
   try {
-    const { user_id, status } = req.body;
-    console.log("STATUS REQUEST:", req.body);
+    const { user_id, status, agent_token } = req.body;
+    const hasAgentToken =
+      typeof agent_token === "string" && agent_token.length > 0;
 
-    if (!user_id || typeof status !== "string" || status.length === 0) {
-      return res.status(400).json({ success: false, error: "user_id and status are required" });
+    // Never log the token itself: it is the agent's credential.
+    console.log("STATUS REQUEST:", {
+      ...req.body,
+      agent_token: hasAgentToken ? "<redacted>" : undefined,
+    });
+
+    if (typeof status !== "string" || status.length === 0) {
+      return res.status(400).json({ success: false, error: "status is required" });
+    }
+
+    if (!hasAgentToken && !user_id) {
+      return res.status(400).json({ success: false, error: "agent_token is required" });
+    }
+
+    if (!hasAgentToken) {
+      // DEPRECATED legacy path. user_id is a sequential integer, so accepting it
+      // as the only identifier lets anyone flip any user's status. Kept solely so
+      // agents already deployed keep reporting; delete this branch (and make
+      // agent_token mandatory) once the fleet has updated.
+      console.warn(
+        `DEPRECATED: /api/employee/status called without agent_token (user_id=${user_id})`
+      );
     }
 
     const formattedStatus =
@@ -290,9 +311,14 @@ const updateStatus = async (req, res) => {
     const normalizedStatus =
       formattedStatus === "Paused" ? "Offline" : formattedStatus;
 
-    const updatedUser = await recordStatusTransition(user_id, normalizedStatus);
+    const updatedUser = await recordStatusTransition(
+      hasAgentToken ? { agentToken: agent_token } : { userId: user_id },
+      normalizedStatus
+    );
     if (!updatedUser) {
-      return res.status(404).json({ success: false, error: "User not found" });
+      return hasAgentToken
+        ? res.status(401).json({ success: false, error: "Invalid agent token" })
+        : res.status(404).json({ success: false, error: "User not found" });
     }
 
     res.json({

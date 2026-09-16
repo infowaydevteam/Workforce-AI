@@ -494,7 +494,10 @@ const sendIdle = async (startTime, endTime) => {
 const updateStatus = async (status) => {
   if (state.lastStatus === status) return;
 
+  // agent_token is what the server authenticates on; user_id is sent only so
+  // older servers that predate token auth keep working.
   await postJson(`${config.apiBaseUrl}/api/employee/status`, {
+    agent_token: config.token,
     user_id: state.user.user_id,
     status,
   });

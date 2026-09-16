@@ -158,7 +158,10 @@ const main = async () => {
 
     const state = getMonitoringState(config.organization_policy);
 
+    // agent_token is what the server authenticates on; user_id is sent only so
+    // older servers that predate token auth keep working.
     await postJson(`${apiBaseUrl}/api/employee/status`, {
+      agent_token: token,
       user_id: verify.user_id,
       status: state.status,
     });

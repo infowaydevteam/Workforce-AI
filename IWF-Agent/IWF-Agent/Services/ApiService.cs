@@ -201,8 +201,11 @@ public static async Task UpdateStatus(string status)
     {
         Console.WriteLine($"Updating Status => {status}");
 
+        // agent_token is what the server authenticates on; user_id is sent only
+        // so older servers that predate token auth keep working.
         var data = new
         {
+            agent_token = ConfigService.GetToken(),
             user_id = UserContext.UserId,
             status = status
         };
