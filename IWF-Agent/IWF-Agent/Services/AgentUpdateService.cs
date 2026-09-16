@@ -15,6 +15,105 @@ public static class AgentUpdateService
     private static readonly HttpClient client = new HttpClient();
     private static bool periodicChecksStarted = false;
 
+    // An update that cannot be applied restarts the old build, which checks for
+    // updates again the moment it comes back. Without a ceiling that is a loop
+    // that re-downloads the whole package every few seconds, forever. Stop after
+    // a few failures and wait out a cooldown, so a transient cause still
+    // recovers on its own but a permanent one costs one attempt per cooldown.
+    private const int MaxApplyAttempts = 3;
+    private static readonly TimeSpan ApplyRetryCooldown = TimeSpan.FromHours(6);
+
+    private class UpdateAttemptState
+    {
+        public string? version { get; set; }
+        public int attempts { get; set; }
+        public DateTime last_attempt_utc { get; set; }
+    }
+
+    private static string UpdatesRoot => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "IWF-Agent",
+        "updates"
+    );
+
+    private static string AttemptStatePath => Path.Combine(UpdatesRoot, "update-state.json");
+
+    private static UpdateAttemptState LoadAttemptState()
+    {
+        try
+        {
+            if (File.Exists(AttemptStatePath))
+            {
+                var parsed = JsonSerializer.Deserialize<UpdateAttemptState>(
+                    File.ReadAllText(AttemptStatePath)
+                );
+
+                if (parsed != null)
+                {
+                    return parsed;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Could not read update attempt state: {ex.Message}");
+        }
+
+        return new UpdateAttemptState();
+    }
+
+    private static void SaveAttemptState(UpdateAttemptState state)
+    {
+        try
+        {
+            Directory.CreateDirectory(UpdatesRoot);
+            File.WriteAllText(
+                AttemptStatePath,
+                JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true })
+            );
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Could not record update attempt state: {ex.Message}");
+        }
+    }
+
+    // Returns false when this version has already burned its attempts and the
+    // cooldown has not elapsed.
+    private static bool ClaimApplyAttempt(string version)
+    {
+        var state = LoadAttemptState();
+
+        if (state.version != version)
+        {
+            state = new UpdateAttemptState { version = version };
+        }
+        else if (state.attempts >= MaxApplyAttempts)
+        {
+            var waited = DateTime.UtcNow - state.last_attempt_utc;
+
+            if (waited < ApplyRetryCooldown)
+            {
+                Console.WriteLine(
+                    $"Skipping update {version}: {state.attempts} attempts have already failed. " +
+                    $"Next attempt in {(ApplyRetryCooldown - waited).TotalMinutes:F0} minutes. " +
+                    $"See apply-update.log under {Path.Combine(UpdatesRoot, version)}."
+                );
+                return false;
+            }
+
+            Console.WriteLine($"Retrying update {version} after cooldown.");
+            state.attempts = 0;
+        }
+
+        state.attempts++;
+        state.last_attempt_utc = DateTime.UtcNow;
+        SaveAttemptState(state);
+
+        Console.WriteLine($"Update {version}: attempt {state.attempts} of {MaxApplyAttempts}.");
+        return true;
+    }
+
     public static void StartPeriodicChecks()
 {
     if (periodicChecksStarted) return;
@@ -100,6 +199,11 @@ public static class AgentUpdateService
                 return false;
             }
 
+            if (!ClaimApplyAttempt(update.latest_version!))
+            {
+                return false;
+            }
+
             return await DownloadAndApply(update);
         }
         catch (Exception ex)
@@ -111,34 +215,49 @@ public static class AgentUpdateService
 
     private static async Task<bool> DownloadAndApply(AgentUpdateResponse update)
     {
-        var updateRoot = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "IWF-Agent",
-            "updates",
-            update.latest_version!
-        );
+        var updateRoot = Path.Combine(UpdatesRoot, update.latest_version!);
         var packagePath = Path.Combine(updateRoot, update.package_name!);
         var stagingPath = Path.Combine(updateRoot, "staged");
 
         Directory.CreateDirectory(updateRoot);
 
-        Console.WriteLine($"Downloading agent update {update.latest_version}...");
+        // A retry after a failed apply already has the package on disk. Checking
+        // its hash costs a local read; downloading it again costs the full
+        // package over the network, once per restart.
+        var reusable =
+            File.Exists(packagePath) &&
+            !string.IsNullOrWhiteSpace(update.checksum_sha256) &&
+            (await Sha256File(packagePath)).Equals(
+                update.checksum_sha256,
+                StringComparison.OrdinalIgnoreCase
+            );
 
-        using (var stream = await client.GetStreamAsync(update.download_url))
-        using (var file = File.Create(packagePath))
+        if (reusable)
         {
-            await stream.CopyToAsync(file);
+            Console.WriteLine(
+                $"Reusing already downloaded {update.package_name} for {update.latest_version}."
+            );
         }
-
-        if (!string.IsNullOrWhiteSpace(update.checksum_sha256))
+        else
         {
-            var checksum = await Sha256File(packagePath);
+            Console.WriteLine($"Downloading agent update {update.latest_version}...");
 
-            if (!checksum.Equals(update.checksum_sha256, StringComparison.OrdinalIgnoreCase))
+            using (var stream = await client.GetStreamAsync(update.download_url))
+            using (var file = File.Create(packagePath))
             {
-                File.Delete(packagePath);
-                Console.WriteLine("Downloaded update failed checksum validation.");
-                return false;
+                await stream.CopyToAsync(file);
+            }
+
+            if (!string.IsNullOrWhiteSpace(update.checksum_sha256))
+            {
+                var checksum = await Sha256File(packagePath);
+
+                if (!checksum.Equals(update.checksum_sha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    File.Delete(packagePath);
+                    Console.WriteLine("Downloaded update failed checksum validation.");
+                    return false;
+                }
             }
         }
 

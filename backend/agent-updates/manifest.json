@@ -6,13 +6,14 @@
       "latest_version": "1.0.8",
       "mandatory": true,
       "package_name": "IWF-Agent-Setup-1.0.8.zip",
-      "checksum_sha256": "2ea637ea4ce8aef0c74a4cc2bcfab8d210a747eea17a35a5617a5efc3bb8f51e",
+      "checksum_sha256": "4bce1c984fc02088de53eb944f77c04e4ded49406fd9c4e73bd998cae2e7a978",
       "release_notes": [
         "Status updates now authenticate with the agent token instead of a guessable user id.",
         "Heartbeat is sent again: the previous build called the policy endpoint by mistake and never reached /api/heartbeat.",
         "Screenshot upload is sent again: the previous build had no destination URL and always failed.",
         "Activity tracking runs while the workstation is unlocked; it was previously confined to the locked branch.",
         "A failed self-update no longer looks like a successful one: the updater retries the copy, records the outcome in apply-update.log, and says so when it had to restart the old build.",
+        "A self-update that keeps failing now gives up after three attempts and waits six hours, and reuses the package it already downloaded instead of fetching it again on every restart.",
         "Updating mid-session now ends the session and marks the employee Offline first, instead of leaving them Online until the offline checker reaps them.",
         "First build produced from a source tree that compiles; 1.0.4 was advertised but never built."
       ]
