@@ -4,7 +4,7 @@
     "windows": {
       "enabled": true,
       "latest_version": "1.0.8",
-      "mandatory": false,
+      "mandatory": true,
       "package_name": "IWF-Agent-Setup-1.0.8.zip",
       "checksum_sha256": "2e86da177eaffae216ff9d01c43ca5fe692db1e9991d0c9c5d4c4794dfb1de70",
       "release_notes": [
@@ -18,12 +18,13 @@
     "macos": {
       "enabled": true,
       "latest_version": "1.0.2",
-      "mandatory": false,
+      "mandatory": true,
       "package_name": "IWF-Agent-1.0.2.pkg",
-      "checksum_sha256": "eb200af24f611cbbe4e8f67dd631d74f3a5913f4f2fac2cb2768623c4c74cdd1",
+      "checksum_sha256": "24958d2df924191c1dc4683608f56e3369afcf844562a37ac3dac883300d0286",
       "release_notes": [
+        "Self-update can now be applied. The installer script looked for its payload under /Applications while the agent installs updates into the user's home, so every self-update failed at the last step.",
         "Status updates now authenticate with the agent token instead of a guessable user id.",
-        "Reports its version as 1.0.2 so the update channel can tell builds apart."
+        "Reports version 1.0.2 so the update channel can distinguish builds."
       ]
     }
   }

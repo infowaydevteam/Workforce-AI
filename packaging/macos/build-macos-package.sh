@@ -28,7 +28,14 @@ CONSOLE_HOME="\$(dscl . -read "/Users/\$CONSOLE_USER" NFSHomeDirectory | awk '{p
 CONFIG_DIR="\$CONSOLE_HOME/Library/Application Support/IWF-Agent"
 LAUNCH_AGENT_DIR="\$CONSOLE_HOME/Library/LaunchAgents"
 PLIST_PATH="\$LAUNCH_AGENT_DIR/com.iwf.agent.plist"
-INSTALL_DIR="/Applications/IWF-Agent"
+
+# \$2 is the destination installer chose. It is "/" for the system-wide install
+# used on first setup, and the user's home directory when the running agent
+# applies an update with -target CurrentUserHomeDirectory. Hard-coding
+# /Applications/IWF-Agent made every self-update fail: the payload landed under
+# the home directory, so this script could not find the template it had just
+# installed and set -e aborted the whole install.
+INSTALL_DIR="\${2%/}/Applications/IWF-Agent"
 
 mkdir -p "\$CONFIG_DIR" "\$LAUNCH_AGENT_DIR"
 
