@@ -1,9 +1,5 @@
 const express = require("express");
-<<<<<<< HEAD
 const { getUsers, deleteUser, updateUserAssignment, updateStatus, getEmployeeById, getLoginHistory, getAppUsage, getActivitySummary, getActivityLogs, getReportsSummary, getAttendanceReport, getProductivityRanking, getReportsAppUsage, getUserFullReport } = require("../controller/userController");
-=======
-const { getUsers, deleteUser, updateStatus, getEmployeeById, getLoginHistory, getAppUsage, getActivitySummary, getActivityLogs, getReportsSummary, getAttendanceReport, getProductivityRanking, getReportsAppUsage, getUserFullReport, updateUserAssignment } = require("../controller/userController");
->>>>>>> abhi
 const { authorizeRole, verifyToken } = require("../middleware/authMiddleware");
 const router = express.Router();
 
@@ -21,18 +17,10 @@ router.delete(
   deleteUser
 );
 
-<<<<<<< HEAD
 router.put(
   "/:id/assignment",
   verifyToken,
   authorizeRole("superadmin", "admin"),
-=======
-
-router.put(
-  "/:id/assignment",
-  verifyToken,
-  authorizeRole("admin"),
->>>>>>> abhi
   updateUserAssignment
 );
 

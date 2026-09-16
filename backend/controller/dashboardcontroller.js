@@ -280,10 +280,9 @@ const getRecentActivities = async (req, res) => {
     query += `
       ORDER BY a.start_time DESC
       LIMIT 10
-    `);
+    `;
 
-    console.log(pool.constructor.name);
-    console.log(result.rows);
+    const result = await pool.query(query, values);
 
     console.log("RECENT ACTIVITIES COUNT:", result.rows.length);
 
@@ -385,7 +384,9 @@ const getLiveUsers = async (req, res) => {
 
     query += `
       ORDER BY users.name ASC
-    `);
+    `;
+
+    const result = await pool.query(query, values);
 
     console.log("LIVE USERS COUNT:", result.rows.length);
 
@@ -485,7 +486,9 @@ const getOrganizationSummary = async (req, res) => {
     query += `
       GROUP BY o.id, o.name
       ORDER BY employee_count DESC
-    `);
+    `;
+
+    const result = await pool.query(query, values);
 
     console.log("ORGANIZATION SUMMARY:", result.rows);
 
