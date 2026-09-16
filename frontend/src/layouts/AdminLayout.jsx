@@ -45,20 +45,16 @@ const AdminLayout = () => {
   });
 
   const menuItems = [
-    ...(role !== "hr"
-      ? [
-          {
-            label: "MAIN",
-            items: [
-              {
-                name: "Dashboard",
-                icon: <LayoutDashboard size={20} />,
-                action: () => navigate("/admin"),
-              },
-            ],
-          },
-        ]
-      : []),
+    {
+      label: "MAIN",
+      items: [
+        {
+          name: "Dashboard",
+          icon: <LayoutDashboard size={20} />,
+          action: () => navigate("/admin"),
+        },
+      ],
+    },
     ...(managementItems.length
       ? [
           {

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { BarChart3, LogOut, Menu } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { roleLabel } from "../../utils/roles";
 
 const Sidebar = ({ menuItems }) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -108,7 +109,7 @@ const Sidebar = ({ menuItems }) => {
 
             <div>
               <p className="text-sm font-medium">{user?.name}</p>
-              <p className="text-xs text-slate-400">{user?.role}</p>
+              <p className="text-xs text-slate-400">{roleLabel(user?.role)}</p>
             </div>
           </div>
         )}

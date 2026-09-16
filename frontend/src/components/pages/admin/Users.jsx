@@ -2,6 +2,14 @@ import React, { useEffect, useState } from "react";
 import { Copy, ExternalLink, Plus, Trash2, UserCog, Users as UsersIcon } from "lucide-react";
 import { API_BASE_URL } from "../../../../config";
 import { useNavigate } from "react-router-dom";
+import {
+  ASSIGNABLE_ROLES,
+  ROLE_EMPLOYEE,
+  ROLE_SUPER_ADMIN,
+  ROLE_TEAM_ADMIN,
+  roleBadgeClass,
+  roleLabel,
+} from "../../../utils/roles";
 
 const Users = () => {
   const [users, setUsers] = useState([]);
@@ -22,14 +30,14 @@ const Users = () => {
     name: "",
     email: "",
     password: "",
-    role: "employee",
+    role: ROLE_EMPLOYEE,
     organization_id: "",
     team_id: "",
     manager_id: "",
   });
 
   const [assignmentForm, setAssignmentForm] = useState({
-    role: "employee",
+    role: ROLE_EMPLOYEE,
     organization_id: "",
     team_id: "",
     manager_id: "",
@@ -233,7 +241,7 @@ const Users = () => {
   };
 
   useEffect(() => {
-    if (showModal && role === "admin") {
+    if (showModal && role === ROLE_TEAM_ADMIN) {
       handleOrgChange({
         target: {
           value: currentUser.organization_id,
@@ -242,12 +250,89 @@ const Users = () => {
 
       setFormData((prev) => ({
         ...prev,
-        role: "employee",
+        role: ROLE_EMPLOYEE,
         organization_id: currentUser.organization_id,
         team_id: currentUser.team_id,
       }));
     }
   }, [showModal]);
+
+  // The assignment modal had state and markup but none of its handlers, so the
+  // Assign button referenced three undefined functions and crashed the page.
+  const openAssignmentModal = (user) => {
+    setSelectedUser(user);
+
+    setAssignmentForm({
+      role: user.role || ROLE_EMPLOYEE,
+      organization_id: user.organization_id || "",
+      team_id: user.team_id || "",
+      manager_id: user.manager_id || "",
+    });
+
+    if (user.organization_id) {
+      fetchTeamsByOrg(user.organization_id);
+    } else {
+      setTeams([]);
+    }
+
+    setShowAssignmentModal(true);
+  };
+
+  const handleAssignmentOrgChange = (e) => {
+    const orgId = e.target.value;
+
+    // Team and manager belong to the previous organization, so clear them
+    // rather than submitting a pairing that no longer exists.
+    setAssignmentForm((prev) => ({
+      ...prev,
+      organization_id: orgId,
+      team_id: "",
+      manager_id: "",
+    }));
+
+    fetchTeamsByOrg(orgId);
+  };
+
+  const handleUpdateAssignment = async (e) => {
+    e.preventDefault();
+
+    if (!selectedUser) return;
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/employee/${selectedUser.id}/assignment`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            role: assignmentForm.role,
+            organization_id: assignmentForm.organization_id || null,
+            team_id: assignmentForm.team_id || null,
+            manager_id: assignmentForm.manager_id || null,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.message || "Failed to update assignment");
+        return;
+      }
+
+      setShowAssignmentModal(false);
+      setSelectedUser(null);
+      fetchUsers();
+    } catch (error) {
+      console.error(error);
+      alert("Failed to update assignment");
+    }
+  };
 
   const handleAddUser = async (e) => {
     e.preventDefault();
@@ -256,8 +341,8 @@ const Users = () => {
       ...formData,
     };
 
-    if (role !== "superadmin") {
-      payload.role = "employee";
+    if (role !== ROLE_SUPER_ADMIN) {
+      payload.role = ROLE_EMPLOYEE;
       payload.organization_id = currentUser.organization_id;
       payload.team_id = currentUser.team_id;
     }
@@ -280,7 +365,7 @@ const Users = () => {
           name: "",
           email: "",
           password: "",
-          role: "employee",
+          role: ROLE_EMPLOYEE,
           organization_id: "",
           team_id: "",
         });
@@ -399,8 +484,8 @@ const Users = () => {
                       <td className="p-4">{user.email}</td>
                       <td className="p-4">
                         <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${user.role === "manager" ? "bg-amber-100 text-amber-700" : user.role === "executive" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
-                          {user.role}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${roleBadgeClass(user.role)}`}>
+                          {roleLabel(user.role)}
                         </span>
                       </td>
 
@@ -547,9 +632,11 @@ const Users = () => {
                 onChange={handleChange}
                 className="w-full border p-3 rounded-xl"
               >
-                <option value="employee">Employee</option>
-                <option value="manager">Manager</option>
-                <option value="executive">Executive</option>
+                {ASSIGNABLE_ROLES.map((value) => (
+                  <option key={value} value={value}>
+                    {roleLabel(value)}
+                  </option>
+                ))}
               </select>
 
               <select
@@ -593,9 +680,9 @@ const Users = () => {
                 }
                 className="w-full border p-3 rounded-xl"
               >
-                <option value="">Select Manager</option>
+                <option value="">Select Team Admin</option>
                 {users
-                  .filter((user) => user.role === "manager" && String(user.organization_id) === String(formData.organization_id))
+                  .filter((user) => user.role === ROLE_TEAM_ADMIN && String(user.organization_id) === String(formData.organization_id))
                   .map((manager) => (
                     <option key={manager.id} value={manager.id}>
                       {manager.name}
@@ -642,9 +729,11 @@ const Users = () => {
                 }
                 className="w-full border p-3 rounded-xl"
               >
-                <option value="employee">Employee</option>
-                <option value="manager">Manager</option>
-                <option value="executive">Executive</option>
+                {ASSIGNABLE_ROLES.map((value) => (
+                  <option key={value} value={value}>
+                    {roleLabel(value)}
+                  </option>
+                ))}
               </select>
 
               <select
@@ -688,9 +777,9 @@ const Users = () => {
                 }
                 className="w-full border p-3 rounded-xl"
               >
-                <option value="">Select Manager</option>
+                <option value="">Select Team Admin</option>
                 {users
-                  .filter((user) => user.role === "manager" && String(user.organization_id) === String(assignmentForm.organization_id))
+                  .filter((user) => user.role === ROLE_TEAM_ADMIN && String(user.organization_id) === String(assignmentForm.organization_id))
                   .map((manager) => (
                     <option key={manager.id} value={manager.id}>
                       {manager.name}

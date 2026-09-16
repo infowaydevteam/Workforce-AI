@@ -22,7 +22,7 @@ const App = () => {
 
         <Route
           element={
-            <ProtectedRoute allowedRoles={["superadmin","admin","hr"]}>
+            <ProtectedRoute allowedRoles={["superadmin","admin"]}>
               <AdminLayout />
             </ProtectedRoute>
           }

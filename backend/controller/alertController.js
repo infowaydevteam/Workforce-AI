@@ -51,7 +51,7 @@ const sendRestrictedAlert = async (req, res) => {
         name,
         email
       FROM users
-      WHERE role = 'manager'
+      WHERE role = 'admin'
       AND organization_id = $1
       AND team_id = $2
       LIMIT 1

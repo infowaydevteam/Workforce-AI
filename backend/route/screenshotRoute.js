@@ -14,21 +14,21 @@ router.post("/upload", uploadScreenshot);
 router.get(
   "/employees",
   verifyToken,
-  authorizeRole("superadmin", "admin", "hr"),
+  authorizeRole("superadmin", "admin"),
   listScreenshotEmployees
 );
 
 router.get(
   "/",
   verifyToken,
-  authorizeRole("superadmin", "admin", "hr"),
+  authorizeRole("superadmin", "admin"),
   listScreenshots
 );
 
 router.get(
   "/:id/image",
   verifyToken,
-  authorizeRole("superadmin", "admin", "hr"),
+  authorizeRole("superadmin", "admin"),
   streamScreenshotImage
 );
 

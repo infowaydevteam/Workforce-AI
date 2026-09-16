@@ -73,7 +73,7 @@ const canAccessEmployee = (viewer, employee) => {
     return true;
   }
 
-  if (["admin", "hr"].includes(viewer.role)) {
+  if (["admin"].includes(viewer.role)) {
     return String(viewer.organization_id) === String(employee.organization_id);
   }
 
@@ -113,7 +113,7 @@ const uploadScreenshot = async (req, res) => {
        FROM users
        WHERE id = $1
          AND agent_token = $2
-         AND role NOT IN ('admin', 'superadmin', 'hr')`,
+         AND role NOT IN ('admin', 'superadmin')`,
       [employee_id, agent_token]
     );
 
@@ -199,7 +199,7 @@ const uploadScreenshot = async (req, res) => {
 const listScreenshotEmployees = async (req, res) => {
   try {
     const params = [];
-    let where = "WHERE u.role NOT IN ('superadmin', 'admin', 'hr')";
+    let where = "WHERE u.role NOT IN ('superadmin', 'admin')";
 
     if (req.user.role !== "superadmin") {
       params.push(req.user.organization_id);
