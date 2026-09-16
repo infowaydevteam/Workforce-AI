@@ -3,7 +3,7 @@ import { Copy, ExternalLink, Plus, Trash2, UserCog, Users as UsersIcon } from "l
 import { API_BASE_URL } from "../../../../config";
 import { useNavigate } from "react-router-dom";
 import {
-  ASSIGNABLE_ROLES,
+  assignableRoles,
   ROLE_EMPLOYEE,
   ROLE_SUPER_ADMIN,
   ROLE_TEAM_ADMIN,
@@ -632,7 +632,7 @@ const Users = () => {
                 onChange={handleChange}
                 className="w-full border p-3 rounded-xl"
               >
-                {ASSIGNABLE_ROLES.map((value) => (
+                {assignableRoles(role).map((value) => (
                   <option key={value} value={value}>
                     {roleLabel(value)}
                   </option>
@@ -729,7 +729,7 @@ const Users = () => {
                 }
                 className="w-full border p-3 rounded-xl"
               >
-                {ASSIGNABLE_ROLES.map((value) => (
+                {assignableRoles(role).map((value) => (
                   <option key={value} value={value}>
                     {roleLabel(value)}
                   </option>

@@ -45,8 +45,14 @@ const getUsers = async (req, res) => {
       LEFT JOIN users managers
         ON users.manager_id = managers.id
 
-      WHERE users.role != 'superadmin'
     `;
+
+    // Super Admins are hidden from everyone else, but hiding them from each
+    // other left no way to see or manage them at all: promoting someone made
+    // them vanish from the only screen that can change a role.
+    query += role === "superadmin"
+      ? "WHERE TRUE"
+      : "WHERE users.role != 'superadmin'";
 
     const values = [];
 
@@ -246,6 +252,39 @@ const updateUserAssignment = async (req, res) => {
   try {
     const { id } = req.params;
     const { role, organization_id, team_id, manager_id } = req.body;
+    const requesterRole = String(req.user?.role || "").toLowerCase();
+
+    // The route allows Team Admins through, so without this they could hand out
+    // any role they liked, including Super Admin, by posting it directly.
+    if (requesterRole !== "superadmin" && role && role !== "employee") {
+      return res.status(403).json({
+        message: "Only a Super Admin can assign this role",
+      });
+    }
+
+    // Demoting the last Super Admin would leave nobody able to manage roles at
+    // all, and no screen through which to fix it.
+    if (role && role !== "superadmin") {
+      const target = await pool.query(
+        `SELECT role FROM users WHERE id = $1`,
+        [id]
+      );
+
+      if (target.rows[0]?.role === "superadmin") {
+        const remaining = await pool.query(
+          `SELECT COUNT(*)::int AS count
+           FROM users
+           WHERE role = 'superadmin' AND id <> $1`,
+          [id]
+        );
+
+        if (remaining.rows[0].count === 0) {
+          return res.status(409).json({
+            message: "Cannot remove the last Super Admin",
+          });
+        }
+      }
+    }
 
     const result = await pool.query(
       `UPDATE users

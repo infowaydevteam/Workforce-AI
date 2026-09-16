@@ -11,10 +11,15 @@ const ROLE_LABELS = {
   [ROLE_EMPLOYEE]: "Employee",
 };
 
-// Roles a Super Admin can hand out. Super Admin is deliberately absent: the
-// backend forces anyone else to create employees, and promoting someone to
-// Super Admin is not something the user form should offer.
-export const ASSIGNABLE_ROLES = [ROLE_TEAM_ADMIN, ROLE_EMPLOYEE];
+// What the signed-in user may hand out. A Super Admin can appoint peers, which
+// is what makes the role recoverable: the backend refuses to demote the last
+// one, so the pair of rules keeps at least one administrator reachable. Anyone
+// else may only create employees, matching the backend, which rejects a Team
+// Admin trying to assign anything higher.
+export const assignableRoles = (viewerRole) =>
+  viewerRole === ROLE_SUPER_ADMIN
+    ? [ROLE_SUPER_ADMIN, ROLE_TEAM_ADMIN, ROLE_EMPLOYEE]
+    : [ROLE_EMPLOYEE];
 
 // Unknown values are shown as-is instead of being hidden, so stale data is
 // visible rather than silently rendered as blank.
