@@ -1,5 +1,6 @@
 const pool = require("../db");
 const { deleteStoredScreenshot } = require("../services/screenshotStorageService");
+const { recordStatusTransition } = require("../services/idleAlertService");
 
 // Get All Users
 const getUsers = async (req, res) => {
@@ -279,24 +280,24 @@ const updateStatus = async (req, res) => {
     const { user_id, status } = req.body;
     console.log("STATUS REQUEST:", req.body);
 
+    if (!user_id || typeof status !== "string" || status.length === 0) {
+      return res.status(400).json({ success: false, error: "user_id and status are required" });
+    }
+
     const formattedStatus =
       status.charAt(0).toUpperCase() +
       status.slice(1).toLowerCase();
     const normalizedStatus =
       formattedStatus === "Paused" ? "Offline" : formattedStatus;
 
-    const result = await pool.query(
-      `UPDATE users
-       SET status = $1,
-           last_active = NOW()
-       WHERE id = $2
-       RETURNING *`,
-      [normalizedStatus, user_id]
-    );
+    const updatedUser = await recordStatusTransition(user_id, normalizedStatus);
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, error: "User not found" });
+    }
 
     res.json({
       success: true,
-      data: result.rows[0],
+      data: updatedUser,
     });
   } catch (err) {
     res.status(500).json({

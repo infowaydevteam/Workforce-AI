@@ -1,4 +1,4 @@
-const pool = require("../db");
+const { recordHeartbeat } = require("../services/idleAlertService");
 
 const heartbeat = async (req, res) => {
   try {
@@ -15,24 +15,16 @@ const heartbeat = async (req, res) => {
     console.log("Heartbeat PID:", process.pid);
     console.log(req.body);
 
-    const result = await pool.query(
-      `
-      UPDATE users
-      SET last_active = NOW()
-      WHERE agent_token = $1
-      RETURNING id, status, last_active
-      `,
-      [agent_token]
-    );
+    const updatedUser = await recordHeartbeat(agent_token);
 
-    if (result.rows.length === 0) {
+    if (!updatedUser) {
       return res.status(404).json({
         success: false,
         message: "Invalid agent",
       });
     }
 
-    console.log("Heartbeat Updated:", result.rows[0]);
+    console.log("Heartbeat Updated:", updatedUser);
 
 
     res.json({

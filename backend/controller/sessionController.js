@@ -1,4 +1,5 @@
 const pool = require("../db");
+const { syncIdleEpisodeForUser } = require("../services/idleAlertService");
 
 // START SESSION
 const startSession = async (req, res) => {
@@ -19,6 +20,8 @@ const startSession = async (req, res) => {
    WHERE id = $1`,
       [user_id]
     );
+
+    await syncIdleEpisodeForUser(user_id, "online");
 
     res.json({ success: true, session: result.rows[0] });
   } catch (err) {
@@ -95,6 +98,8 @@ const endSession = async (req, res) => {
       `,
       [user_id]
     );
+
+    await syncIdleEpisodeForUser(user_id, "offline");
 
     return res.json({
       success: true,

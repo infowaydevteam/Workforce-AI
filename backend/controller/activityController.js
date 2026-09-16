@@ -1,4 +1,5 @@
 const pool = require("../db");
+const { syncIdleEpisodeForUser } = require("../services/idleAlertService");
 
 const getProductivityCategory = async (userId, appName, fallbackCategory) => {
   if (["productive", "unproductive", "neutral"].includes(fallbackCategory)) {
@@ -80,6 +81,8 @@ const logActivity = async (req, res) => {
         [user_id]
       );
 
+      await syncIdleEpisodeForUser(user_id, "online");
+
       return res.json({ success: true, merged: true });
     }
 
@@ -98,6 +101,8 @@ const logActivity = async (req, res) => {
        WHERE id = $1`,
       [user_id]
     );
+
+    await syncIdleEpisodeForUser(user_id, "online");
 
     res.json({ success: true, data: result.rows[0], merged: false });
 

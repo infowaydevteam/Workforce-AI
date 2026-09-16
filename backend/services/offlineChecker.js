@@ -1,4 +1,5 @@
 const pool = require("../db");
+const { syncIdleEpisodeForUser } = require("./idleAlertService");
 
 function startOfflineChecker() {
     console.log("Offline Checker Started");
@@ -121,6 +122,8 @@ function startOfflineChecker() {
                     `,
                     [user.id]
                 );
+
+                await syncIdleEpisodeForUser(user.id, "stale_heartbeat");
 
                 console.log(
                     `User ${user.id} status changed to Offline`

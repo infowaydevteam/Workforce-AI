@@ -16,6 +16,7 @@ const restrictedRoute = require("./route/restrictedRoute");
 const adminWorkflowRoutes = require("./route/adminWorkflowRoute");
 const teamReportRoutes = require("./route/teamsReportRouter");
 const startOfflineChecker = require("./services/offlineChecker");
+const startIdleAlertScheduler = require("./services/idleAlertScheduler");
 const heartbeatRoute = require("./route/heartbeatRoute");
 const app = express();
 
@@ -44,3 +45,4 @@ app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);
 });
 startOfflineChecker();
+startIdleAlertScheduler();

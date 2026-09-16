@@ -179,7 +179,101 @@ const sendRestrictedWebsiteAlert = async ({
   }
 };
 
+const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+}[character]));
+
+// This path intentionally propagates SMTP errors so the episode delivery can be persisted.
+const sendAutomaticIdleAlertEmail = async ({
+  recipient,
+  userName,
+  teamName,
+  durationMinutes,
+  idleStartedAt,
+  organizationName,
+  timezone,
+  workingStart,
+  workingEnd,
+  episodeId,
+}) => {
+  const idleStart = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    dateStyle: "medium",
+    timeStyle: "medium",
+  }).format(new Date(idleStartedAt));
+
+  const result = await transporter.sendMail({
+  from: `"IWF Team" <${process.env.EMAIL_USER}>`,
+  to: recipient,
+  subject: `IWF Alert - ${userName} idle for ${durationMinutes} minutes`,
+  html: `
+    <div style="font-family:Arial,sans-serif;padding:20px;line-height:1.6">
+      <h2 style="color:#b45309">Employee Idle Alert</h2>
+
+      <p>
+        <strong>${escapeHtml(userName)}</strong> from
+        <strong>${escapeHtml(teamName)}</strong> has been idle for
+        <strong>${Number(durationMinutes)} minutes</strong>.
+      </p>
+
+      <table style="border-collapse:collapse">
+        <tr>
+          <td style="padding:6px;font-weight:bold">Idle start</td>
+          <td style="padding:6px">${escapeHtml(idleStart)}</td>
+        </tr>
+
+        <tr>
+          <td style="padding:6px;font-weight:bold">Organization</td>
+          <td style="padding:6px">${escapeHtml(organizationName)}</td>
+        </tr>
+
+        <tr>
+          <td style="padding:6px;font-weight:bold">Timezone</td>
+          <td style="padding:6px">${escapeHtml(timezone)}</td>
+        </tr>
+
+        <tr>
+          <td style="padding:6px;font-weight:bold">Working window</td>
+          <td style="padding:6px">
+            ${escapeHtml(workingStart)}-${escapeHtml(workingEnd)}
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:6px;font-weight:bold">Episode ID</td>
+          <td style="padding:6px">${escapeHtml(episodeId)}</td>
+        </tr>
+      </table>
+
+      <p>Please verify the employee's activity.</p>
+    </div>
+  `,
+});
+
+console.log("Idle alert SMTP result:", {
+  messageId: result.messageId,
+  accepted: result.accepted,
+  rejected: result.rejected,
+  response: result.response,
+});
+
+const acceptedRecipients = Array.isArray(result.accepted)
+  ? result.accepted.map((value) => String(value).toLowerCase())
+  : [];
+
+if (!acceptedRecipients.includes(String(recipient).toLowerCase())) {
+  throw new Error(
+    `SMTP did not accept recipient ${recipient}. ` +
+    `Accepted: ${JSON.stringify(result.accepted || [])}. ` +
+    `Rejected: ${JSON.stringify(result.rejected || [])}.`
+  );
+}
+
+return result;
+};
+
 module.exports = {
   sendAgentEmail,
-  sendRestrictedWebsiteAlert
+  sendRestrictedWebsiteAlert,
+  sendAutomaticIdleAlertEmail,
 };
