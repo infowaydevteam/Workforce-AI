@@ -3,7 +3,33 @@ const pool = require("../db");
 const getTeamReport = async (team_id, from, to) => {
 
     // ============================
-    // TEAM ADMIN
+    // TEAM
+    // ============================
+
+    // The team row is the authoritative source for organization scoping.
+    // Deriving it from a team admin instead made the whole report fail for
+    // every team that happens not to have one.
+    const team = await pool.query(
+        `
+        SELECT
+            id,
+            organization_id
+        FROM teams
+        WHERE id=$1
+        `,
+        [team_id]
+    );
+
+    if (team.rows.length === 0) {
+        const notFound = new Error("Team not found");
+        notFound.statusCode = 404;
+        throw notFound;
+    }
+
+    const organizationId = team.rows[0].organization_id;
+
+    // ============================
+    // TEAM ADMIN (optional)
     // ============================
 
     const admin = await pool.query(
@@ -11,9 +37,7 @@ const getTeamReport = async (team_id, from, to) => {
         SELECT
             id,
             name,
-            email,
-            organization_id,
-            team_id
+            email
         FROM users
         WHERE team_id=$1
         AND role='admin'
@@ -22,11 +46,7 @@ const getTeamReport = async (team_id, from, to) => {
         [team_id]
     );
 
-    if (admin.rows.length === 0) {
-        throw new Error("Team admin not found");
-    }
-
-    const adminData = admin.rows[0];
+    const adminData = admin.rows[0] || null;
 
     // ============================
     // TEAM USERS
@@ -43,13 +63,9 @@ const getTeamReport = async (team_id, from, to) => {
         `,
         [
             team_id,
-            adminData.organization_id
+            organizationId
         ]
     );
-
-    if (users.rows.length === 0) {
-        throw new Error("No users found in team");
-    }
 
     const userIds = users.rows.map(u => u.id);
     const summaryData = await pool.query(
@@ -528,18 +544,20 @@ GROUP BY i.user_id
     return {
 
         organization: {
-            id: adminData.organization_id
+            id: organizationId
         },
 
         team: {
             id: team_id
         },
 
-        admin: {
-            id: adminData.id,
-            name: adminData.name,
-            email: adminData.email
-        },
+        admin: adminData
+            ? {
+                id: adminData.id,
+                name: adminData.name,
+                email: adminData.email
+            }
+            : null,
 
         report_period: {
             from: from || null,

@@ -148,9 +148,9 @@ const Reports = () => {
 
     doc.setFontSize(11);
 
-    doc.text(`Admin : ${report.admin.name}`, 14, 30);
+    doc.text(`Admin : ${report.admin?.name ?? "Not assigned"}`, 14, 30);
 
-    doc.text(`Email : ${report.admin.email}`, 14, 37);
+    doc.text(`Email : ${report.admin?.email ?? "Not assigned"}`, 14, 37);
 
     doc.text(`Organization ID : ${report.organization.id}`, 14, 44);
 
@@ -534,7 +534,7 @@ const Reports = () => {
 
           <div>
             <h1 className="text-3xl font-bold">
-              {report.admin.name}
+              {report.admin?.name ?? "Team Report"}
             </h1>
 
             <p className="text-indigo-100 mt-2">
@@ -1143,7 +1143,7 @@ const Reports = () => {
               </p>
 
               <p className="font-semibold mt-1">
-                {report.admin.name}
+                {report.admin?.name ?? "Not assigned"}
               </p>
             </div>
 
@@ -1153,7 +1153,7 @@ const Reports = () => {
               </p>
 
               <p className="font-semibold mt-1 break-all">
-                {report.admin.email}
+                {report.admin?.email ?? "Not assigned"}
               </p>
             </div>
 

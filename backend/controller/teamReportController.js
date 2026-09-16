@@ -42,7 +42,7 @@ const getTeamReportController = async (req, res) => {
 
         console.log(err);
 
-        res.status(500).json({
+        res.status(err.statusCode || 500).json({
 
             success:false,
 
